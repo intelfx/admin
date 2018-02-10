@@ -1,0 +1,6 @@
+[submodule "letsencrypt/dehydrated"]
+	path = letsencrypt/dehydrated
+	url = https://github.com/intelfx/dehydrated
+[submodule "bin"]
+	path = bin
+	url = https://github.com/intelfx/bin

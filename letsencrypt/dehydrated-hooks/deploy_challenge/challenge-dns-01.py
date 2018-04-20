@@ -8,11 +8,12 @@ import json
 import requests
 
 import lib
+import lib.pdd
 
 
 def deploy(*, name, type, content):
 	logging.info(f'will create record type {type} name {name} content {content}')
-	pdd.add(name=name, type=type, content=content, ttl='60')
+	pdd.add(subdomain=name, type=type, content=content, ttl='60')
 
 
 def clean(*, name, type, content):
@@ -22,13 +23,12 @@ def clean(*, name, type, content):
 		if (r.type == type and
 		    r.fqdn == name and
 		    r.content == content):
-			id = r.record_id
 			break
 	else:
-		raise RuntimeError(f'Failed to find record type {_type} name {_name} content {content}')
+		raise RuntimeError(f'Failed to find record type {type} name {name} content {content}')
 
-	logging.info(f'will delete record id {id} type {type} name {name} content {content}')
-	pdd.delete(id=id)
+	logging.info(f'will delete record id {r.record_id} type {r.type} name {r.fqdn} content {r.content}')
+	pdd.delete(r)
 
 
 actions = {
@@ -54,7 +54,7 @@ lib.configure_logging(prefix=f'DNS-01: {args.domain}: ')
 
 config = yaml.load(open('letsencrypt.yaml'))
 config = lib.attrdict(config)
-pdd = lib.Pdd(config.pdd)
+pdd = lib.pdd.Pdd(config.pdd)
 
 def subdomain_of(subdomain, domain):
 	return subdomain == domain or subdomain.endswith('.' + domain)

@@ -12,14 +12,30 @@ TIMESTAMP="$7"
 
 DEST_IDENTITY="/etc/admin/id_rsa"
 DEST_SSH_HOST="root@konishi.intelfx.name"
+DEST_SSH_PORT="2222"
+
+ssh_args=(
+	-o IdentityFile="$DEST_IDENTITY"
+	-o StrictHostKeyChecking=accept-new
+)
+
+ssh=(
+	ssh
+	"${ssh_args[@]}"
+)
+
+scp=(
+	scp
+	"${ssh_args[@]}"
+)
 
 log "Pushing certificate to router"
 
-scp -o IdentityFile="$DEST_IDENTITY" "$PRIVKEY" "$DEST_SSH_HOST":/etc/uhttpd.key
-scp -o IdentityFile="$DEST_IDENTITY" "$FULLCHAIN" "$DEST_SSH_HOST":/etc/uhttpd.crt
+"${scp[@]}" -P "$DEST_SSH_PORT" "$PRIVKEY" "$DEST_SSH_HOST":/etc/uhttpd.key
+"${scp[@]}" -P "$DEST_SSH_PORT" "$FULLCHAIN" "$DEST_SSH_HOST":/etc/uhttpd.crt
 
 log "Pushing certificate to router OK, now reloading"
 
-ssh -o IdentityFile="$DEST_IDENTITY" "$DEST_SSH_HOST" '/etc/init.d/uhttpd reload'
+"${ssh[@]}" -p "$DEST_SSH_PORT" "$DEST_SSH_HOST" '/etc/init.d/uhttpd reload'
 
 log "Reloading certificate in router OK"

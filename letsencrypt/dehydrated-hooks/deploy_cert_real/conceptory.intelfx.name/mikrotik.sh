@@ -11,16 +11,32 @@ CHAIN="$6"
 TIMESTAMP="$7"
 
 DEST_IDENTITY="/etc/admin/id_rsa"
-DEST_SSH_HOST="restricted@router.9-20.lan"
+DEST_SSH_HOST="restricted@conceptory.intelfx.name"
+DEST_SSH_PORT="2222"
+
+ssh_args=(
+	-o IdentityFile="$DEST_IDENTITY"
+	-o StrictHostKeyChecking=accept-new
+)
+
+ssh=(
+	ssh
+	"${ssh_args[@]}"
+)
+
+scp=(
+	scp
+	"${ssh_args[@]}"
+)
 
 log "Pushing certificate to router"
 
-scp -o IdentityFile="$DEST_IDENTITY" "$PRIVKEY" "$DEST_SSH_HOST":/https.key
-scp -o IdentityFile="$DEST_IDENTITY" "$FULLCHAIN" "$DEST_SSH_HOST":/https.crt
+"${scp[@]}" -P "$DEST_SSH_PORT" "$PRIVKEY" "$DEST_SSH_HOST":/https.key
+"${scp[@]}" -P "$DEST_SSH_PORT" "$FULLCHAIN" "$DEST_SSH_HOST":/https.crt
 
 log "Pushing certificate to router OK, now reloading"
 
-ssh -o IdentityFile="$DEST_IDENTITY" "$DEST_SSH_HOST" <<-EOF
+"${ssh[@]}" "$DEST_SSH_HOST" -p "$DEST_SSH_PORT" <<-EOF
 	/certificate remove https
 	/certificate import file-name=https.crt passphrase=""
 	/certificate import file-name=https.key passphrase=""

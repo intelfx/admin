@@ -1,0 +1,40 @@
+# IP address of the probe
+sender: 10.159.230.1
+# IP subnet behind the probe
+subnet: 10.159.230.0/24
+# measurement name to send to influxdb
+measurement: "lan.9-20.router.wan"
+
+influx:
+        # influxdb:// URI of the influxdb instance
+        uri: "influxdb://localhost:8086/traffic"
+        # retention policy name for the raw flows
+        rp_raw: "raw_flows"
+        # aggregations to perform (hand-rolled CQs)
+        # see code for details
+        aggregations:
+                #- rp: "group_both"
+                # group_by_time: "1m"
+                # group_by_keys: "\"src_addr\", \"dst_addr\", \"inbound\""
+                # new_fields: "count(\"bytes_in\") as \"count\""
+                - rp: "group_src"
+                  group_by_time: "1m"
+                  group_by_keys: "\"src_addr\", \"inbound\""
+                  new_fields: "count(\"bytes_in\") as \"count\""
+
+aux:
+        # fqdn to query for our WAN addresses
+        query_fqdn: wan.9-20.lan
+        # fqdn to map our WAN addresses into
+        mapping_fqdn: router.9-20.lan
+
+# additional subnets behind the probe
+# (put VPN subnets DNATed from the probe here)
+subnets_addn:
+        - 10.159.231.0/24
+        - 10.159.232.0/24
+
+# flows for this host will not have their hostnames resolved
+# (put your torrent box IP here)
+numeric_dst_hosts:
+        - 10.159.230.2

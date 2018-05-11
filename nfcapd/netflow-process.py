@@ -5,6 +5,7 @@
 # imports
 #
 
+import lib
 
 import os
 import sys
@@ -22,10 +23,10 @@ import itertools
 
 import influxdb
 
+
 #
 # data types
 #
-
 
 class IPv4:
 	def __init__(self, string, subnet_bits = None):
@@ -167,9 +168,9 @@ def getaddrinfo_repeated(host, port, *args, **kwargs):
 			continue
 
 
-def load_aux_addresses(config):
+def load_aux_addresses(cfg):
 	# we fetch aux addresses via a DNS query for an artificial domain name
-	fqdn = config["query_fqdn"]
+	fqdn = cfg.query_fqdn
 	l.info(f"loading aux addresses via nameserver query for {fqdn}")
 
 	# HACK to combat strange transient problems
@@ -179,7 +180,7 @@ def load_aux_addresses(config):
 	              in addrs])
 
 	# we assign those addresses to another domain name
-	fqdn = config["mapping_fqdn"]
+	fqdn = cfg.mapping_fqdn
 
 	return { IPv4(a): fqdn
 	         for a
@@ -200,12 +201,14 @@ def nfdump(infile):
 	nfdump = csv.DictReader(nfdump.stdout, fieldnames = nfdump_fields,
 	                        skipinitialspace = True)
 
+	nfdump = map(lambda x: lib.attrconvert(x), nfdump)
+
 	return nfdump
 
 
 def resolve_name_and_port(flow, addr, port, rank, flags = 0):
-	if addr in cfg_aux:
-		r_addr = cfg_aux[addr]
+	if addr in cfg.aux:
+		r_addr = cfg.aux[addr]
 
 		# TODO find a way to disable hostname resolution in getnameinfo (akin to passing NULL to host)
 		# until then, disable name resolution effectively
@@ -236,11 +239,11 @@ def resolve_name_and_port(flow, addr, port, rank, flags = 0):
 
 
 def local_rank(ipv4):
-	if ipv4 in cfg_subnet:
+	if ipv4 in cfg.subnet:
 		return 2
-	if ipv4 in cfg_aux:
+	if ipv4 in cfg.aux:
 		return 1
-	for s in cfg_subnets_addn:
+	for s in cfg.subnets_addn:
 		if ipv4 in s:
 			return 0.5
 	return 0
@@ -260,7 +263,7 @@ def process(flow):
 		l.warning(f"source address with rank 0: {flow.src_addr}")
 
 	dst_flags = 0
-	if flow.src_addr in cfg_numeric_dst_hosts:
+	if flow.src_addr in cfg.numeric_dst_hosts:
 		dst_flags |= socket.NI_NUMERICHOST
 
 	flow.src_name, flow.src_port_name = resolve_name_and_port(flow, flow.src_addr, flow.src_port, flow.src_rank, 0)
@@ -312,7 +315,7 @@ def hack_wiggle_time(flow, unique):
 
 def make_influx(flow):
 	out = {
-		"measurement": cfg_measurement,
+		"measurement": cfg.measurement,
 		"tags": {
 			"src_addr": flow.src_name,
 			"dst_addr": flow.dst_name,
@@ -343,49 +346,40 @@ sys.excepthook = excepthook
 sys.stderr = os.fdopen(sys.stderr.fileno(), 'w', buffering = 1)
 sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', buffering = 1)
 
-logging.basicConfig(style = '{',
-                    format = '{levelname}: {message}',
-                    level = logging.INFO)
 l = logging.getLogger()
 
-if len(sys.argv) != 2:
-	raise RuntimeError(f"Usage: {sys.argv[0]} <file to process>")
+parser = argparse.ArgumentParser()
+parser.add_argument("file")
+args = parser.parse_args()
 
-(_, input) = sys.argv
-l.info(f"input: {input}")
+l.info(f"input: {args.file}")
+file_dir = os.path.dirname(args.file)
+cfg = os.path.join(file_dir, "config.yaml")
 
-input_dir = os.path.dirname(input)
-config = os.path.join(input_dir, "config.yaml")
+l.info(f"loading config at {cfg}")
+cfg = lib.attrconvert(yaml.load(open(cfg)))
 
-l.info(f"loading config at {config}")
-config = yaml.load(open(config))
-
-cfg_measurement = config["measurement"]
-l.info(f"measurement: {cfg_measurement}")
-cfg_subnet = IPv4(config["subnet"])
-l.info(f"local subnet: {cfg_subnet}")
-cfg_aux = config["aux"]
-l.info(f"unresolved local aux mappings: {cfg_aux}")
-cfg_subnets_addn = [ IPv4(s) for s in config.get("subnets_addn", []) ]
-l.info(f"additional local subnets: {cfg_subnets_addn}")
-cfg_numeric_dst_hosts = [ IPv4(s) for s in config.get("numeric_dst_hosts", []) ]
-l.info(f"not resolving dst-address for hosts: {cfg_numeric_dst_hosts}")
-cfg_influx_uri = config["influx"]["uri"]
-l.info(f"influxdb instance from {cfg_influx_uri}")
-cfg_influx_rp = config["influx"]["rp_raw"]
-l.info(f"influxdb raw data RP: {cfg_influx_rp}")
-cfg_influx_agg = config["influx"]["aggregations"]
-l.info(f"influxdb aggregated data RPs: {[ x['rp'] for x in cfg_influx_agg ]}")
+l.info(f"measurement: {cfg.measurement}")
+cfg.subnet = IPv4(cfg.subnet)
+l.info(f"local subnet: {cfg.subnet}")
+l.info(f"unresolved local aux mappings: {cfg.aux}")
+cfg.subnets_addn = [ IPv4(s) for s in cfg.get("subnets_addn", []) ]
+l.info(f"additional local subnets: {cfg.subnets_addn}")
+cfg.numeric_dst_hosts = [ IPv4(s) for s in cfg.get("numeric_dst_hosts", []) ]
+l.info(f"not resolving dst-address for hosts: {cfg.numeric_dst_hosts}")
+l.info(f"influxdb instance from {cfg.influx.uri}")
+l.info(f"influxdb raw data RP: {cfg.influx.rp_raw}")
+l.info(f"influxdb aggregated data RPs: {[ x.rp for x in cfg.influx.aggregations ]}")
 
 if os.isatty(sys.stderr.fileno()):
-	cfg_highlight_on = subprocess.run(["tput", "bold"], stdout=subprocess.PIPE, universal_newlines=True).stdout
-	cfg_highlight_off = subprocess.run(["tput", "sgr0"], stdout=subprocess.PIPE, universal_newlines=True).stdout
+	cfg_highlight_on = lib.run(["tput", "bold"], stdout=subprocess.PIPE).stdout
+	cfg_highlight_off = lib.run(["tput", "sgr0"], stdout=subprocess.PIPE).stdout
 else:
 	cfg_highlight_on = ""
 	cfg_highlight_off = ""
 
-if "verbose" in config:
-	if config["verbose"]:
+if "verbose" in cfg:
+	if cfg.verbose:
 		l.setLevel(logging.DEBUG)
 else:
 	if os.isatty(sys.stderr.fileno()):
@@ -394,8 +388,8 @@ else:
 # Up to this point, we did not perform any meaningful things.
 # Check if we actually have any flows to report.
 
-l.info(f"parsing {input} via nfdump as csv output")
-flows = nfdump(input)
+l.info(f"parsing {args.file} via nfdump as csv output")
+flows = nfdump(args.file)
 flows_out = []
 
 # this is how to "peek" an entry from an iterator
@@ -403,7 +397,7 @@ flows_out = []
 try:
 	flow_first = next(flows)
 	# some versions of nfdump print "No matched flows" instead of printing nothing
-	if flow_first["ts"] == "No matched flows":
+	if flow_first.ts == "No matched flows":
 		raise StopIteration
 	flows = itertools.chain([ flow_first ], flows)
 except StopIteration:
@@ -413,10 +407,11 @@ except StopIteration:
 
 # Otherwise, continue connecting to external services and do meaningful work.
 
-cfg_aux = load_aux_addresses(cfg_aux)
-l.info(f"local aux mappings: {cfg_aux}")
+cfg.aux = load_aux_addresses(cfg.aux)
+l.info(f"local aux mappings: {cfg.aux}")
 
-influx = influxdb.InfluxDBClient.from_dsn(cfg_influx_uri)
+influx = influxdb.InfluxDBClient.from_dsn(cfg.influx.uri)
+l.info(f"InfluxDB client object: {influx}")
 
 warned_flows = 0
 failed_flows = 0
@@ -474,40 +469,40 @@ if len(flows_out) == 0:
 	sys.exit(0)
 
 # sort by time
-flows_out.sort(key = lambda f: f["time"])
-flow_ts_min = flows_out[0]["time"]
-flow_ts_max = flows_out[-1]["time"]
+flows_out.sort(key = lambda f: f.time)
+flow_ts_min = flows_out[0].time
+flow_ts_max = flows_out[-1].time
 l.info(f"Raw time range: from {flow_ts_min} to {flow_ts_max}")
 
 # write raw points
-influx.write_points(flows_out, retention_policy = cfg_influx_rp, time_precision = 'u')
+influx.write_points(flows_out, retention_policy = cfg.influx.rp_raw, time_precision = 'u')
 
 # XXX: CQs are not featureful enough to do what we want (they cannot be delayed or re-run on historical intervals if data is inserted with delays or out of order),
 #      so we perform aggregation by hand
-for agg in cfg_influx_agg:
-	l.info(f"Aggregation {agg['rp']}: interval {agg['group_by_time']}, keys {agg['group_by_keys']}, fields {agg['new_fields']}")
+for agg in cfg.influx.aggregations:
+	l.info(f"Aggregation {agg.rp}: interval {agg.group_by_time}, keys {agg.group_by_keys}, fields {agg.new_fields}")
 
-	if agg["group_by_time"] != "1m":
-		raise NotImplementedError(f"Aggregation {agg['rp']}: unsupported grouping interval of {agg['group_by_time']}")
+	if agg.group_by_time != "1m":
+		raise NotImplementedError(f"Aggregation {agg.rp}: unsupported grouping interval of {agg.group_by_time}")
 
 	# calculate boundaries for the aggregating query
 	agg_ts_min = flow_ts_min.replace(second = 0, microsecond = 0)
 	agg_ts_max = (flow_ts_max + timedelta(minutes = 1)).replace(second = 0, microsecond = 0)
-	l.info(f"Aggregation {agg['rp']}: updating from {agg_ts_min} to {agg_ts_max}")
+	l.info(f"Aggregation {agg.rp}: updating from {agg_ts_min} to {agg_ts_max}")
 
 	# construct the aggregating query
 	agg_query = f"""
-	SELECT sum("bytes_in") as "bytes_in", sum("bytes_out") as "bytes_out", {agg['new_fields']}
-	INTO "{agg['rp']}"."{cfg_measurement}"
-	FROM "{cfg_influx_rp}"."{cfg_measurement}"
+	SELECT sum("bytes_in") as "bytes_in", sum("bytes_out") as "bytes_out", {agg.new_fields}
+	INTO "{agg.rp}"."{cfg.measurement}"
+	FROM "{cfg.influx.rp_raw}"."{cfg.measurement}"
 	WHERE time >= '{agg_ts_min.astimezone(timezone.utc):%Y-%m-%dT%H:%M:%SZ}' and
 	      time < '{agg_ts_max.astimezone(timezone.utc):%Y-%m-%dT%H:%M:%SZ}'
-	GROUP BY time({agg['group_by_time']}), {agg['group_by_keys']}
+	GROUP BY time({agg.group_by_time}), {agg.group_by_keys}
 	"""
 
 	influx.query(query = agg_query)
 
-	l.info(f"Aggregation {agg['rp']}: done")
+	l.info(f"Aggregation {agg.rp}: done")
 
 if failed_flows > 0:
 	sys.exit(1)

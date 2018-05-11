@@ -5,43 +5,47 @@
 # imports
 #
 
+import lib
 
 import os
-import sys
 import glob
-import subprocess
 import yaml
-
-
-#
-# helper functions
-#
-
-
-def log(string):
-	print("netflow-capture.py: " + string, file = sys.stderr)
+import argparse
+import logging
 
 
 #
 # main
 #
 
+#
+# Configs for each netflow probe are expected to be found at
+#  $config_root/$probe_name/config.yaml
+#
+# Input netflow data for each netflow probe will be temporarily stored under
+#  $data_root/$probe_name/
+#
 
-if len(sys.argv) != 3:
-	raise RuntimeError(f"Usage: {sys.argv[0]} <config root> <data root>")
+parser = argparse.ArgumentParser()
+parser.add_argument('config_root',
+	help='where to look for configuration files for each netflow probe (expected at $config_root/$probe_name/config.yaml)'
+)
+parser.add_argument('data_root',
+	help='where to store input netflow data for each netflow probe (will be stored under $data_root/$probe_name/)'
+)
+args = parser.parse_args()
 
-(_, config_root, data_root) = sys.argv
-log(f"config root: {config_root}, data root: {data_root}")
+logging.info(f"config root: {args.config_root}, data root: {args.data_root}")
+
+configs = glob.glob(os.path.join(args.config_root, '*', 'config.yaml'))
+logging.info(f"configs under given root: {configs}")
 
 nfcapd = [ "nfcapd", "-T", "all", "-t", "60", "-x", f"./netflow-process-wrapper.sh %d/%f" ]
 
-configs = glob.glob(os.path.join(config_root, '*', 'config.yaml'))
-log(f"configs under given root: {configs}")
-
 for config in configs:
 	config_dir, config_name = os.path.split(config)
-	config_dir_name = os.path.basename(config_dir)
-	data_dir = os.path.join(data_root, config_dir_name)
+	probe_name = os.path.basename(config_dir)
+	data_dir = os.path.join(args.data_root, probe_name)
 	data_config = os.path.join(data_dir, config_name)
 	try:
 		os.mkdir(data_dir)
@@ -52,11 +56,10 @@ for config in configs:
 	except:
 		pass
 
-	config = yaml.load(open(config))
-	sender = config["sender"]
-	log(f"{config_dir_name}: sender {sender}")
+	config = lib.attrconvert(yaml.load(open(config)))
+	logging.info(f"{probe_name}: sender {config.sender}")
 
-	nfcapd += [ "-n", f"{config_dir_name},{sender},{data_dir}" ]
+	nfcapd += [ "-n", f"{probe_name},{config.sender},{data_dir}" ]
 
-log(f"running nfcapd: {nfcapd}")
+logging.info(f"running nfcapd: {nfcapd}")
 os.execvp(nfcapd[0], nfcapd)

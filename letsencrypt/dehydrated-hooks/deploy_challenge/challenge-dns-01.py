@@ -16,7 +16,7 @@ import dns.resolver
 
 
 def wait(*, name, type, target):
-	delay = 1
+	delay = 1.875
 	while True:
 		try:
 			answers = {
@@ -33,7 +33,7 @@ def wait(*, name, type, target):
 
 		logging.info(f'will wait for {delay} seconds for record type {type} name {name} target {target} to appear')
 		time.sleep(delay)
-		delay = min(300, delay*2)
+		delay = min(60, delay*2)
 
 	logging.info(f'will wait another {delay} seconds')
 	time.sleep(delay)

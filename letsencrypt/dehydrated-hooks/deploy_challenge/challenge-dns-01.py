@@ -11,7 +11,7 @@ import time
 
 import lib
 
-import linode_api4 as L
+import linode_api4
 import dns.resolver
 
 
@@ -67,10 +67,16 @@ def clean(*, zone, name, type, target):
 	if not found:
 		logging.warn(f'could not find record type {type} name {name} target {target}')
 
+
+#
+# action map
+#
+
 actions = {
 	'deploy_challenge': deploy,
 	'clean_challenge': clean,
 }
+
 
 #
 # main: parse arguments
@@ -121,7 +127,7 @@ def subdomain_of(subdomain, domain):
 	return subdomain == domain or subdomain.endswith('.' + domain)
 
 config = config.linode
-linode = L.LinodeClient(config.token)
+linode = linode_api4.LinodeClient(config.token)
 zones = [
 	d
 	for d

@@ -1,17 +1,7 @@
 #!/bin/bash -e
 
-function log() {
-	echo "$*" >&2
-}
-
-function err() {
-	echo "E: $*" >&2
-}
-
-function die() {
-	err "$@"
-	exit 1
-}
+cd "${BASH_SOURCE%/*}"
+. lib/lib.sh
 
 host="$1"
 dest="/mnt/data/Backups/Резервные копии сетевых устройств"
@@ -36,12 +26,17 @@ if [[ "$host" == *:* ]]; then
 	hostport="${host##*:}"
 fi
 
+SSH=(
+	-o StrictHostKeyChecking=accept-new
+	-i /etc/admin/id_rsa
+)
+
 function do_ssh() {
-	ssh ${hostport:+-p "$hostport"} -i /etc/admin/id_rsa restricted@"$hostaddr" "$@"
+	ssh "${SSH[@]}" ${hostport:+-p "$hostport"} restricted@"$hostaddr" "$@"
 }
 
 function do_sftp() {
-	sftp ${hostport:+-P "$hostport"} -i /etc/admin/id_rsa restricted@"$hostaddr" "$@"
+	sftp "${SSH[@]}" ${hostport:+-P "$hostport"} restricted@"$hostaddr" "$@"
 }
 
 host_identity="$(do_ssh ":put [/system identity get name]" | tr -d '\r\n')"

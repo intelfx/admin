@@ -20,4 +20,4 @@ cat "$PRIVKEY" "$CERT" > "${BASEDIR}/${PEM_BUNDLE}"
 ln -sf "${PEM_BUNDLE}" "${BASEDIR}/${PEM_BUNDLE_LINK}"
 
 log "Reloading"
-systemctl try-reload-or-restart lighttpd synapse turnserver
+systemctl try-reload-or-restart nginx turnserver

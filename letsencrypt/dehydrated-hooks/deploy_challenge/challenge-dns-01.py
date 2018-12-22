@@ -8,11 +8,26 @@ import json
 import requests
 import socket
 import time
+import subprocess
 
 import lib
 
-import linode_api4
 import dns.resolver
+
+def gcloud_dns_list(zone):
+	r = lib.run(
+		[ 'gcloud', 'dns', 'record-sets', 'list', '-z', zone, '--format', 'json' ],
+		stdout=subprocess.PIPE
+	)
+	r = lib.attrconvert(json.loads(r.stdout))
+	return r
+
+
+def gcloud_dns_txn(zone, op, *args):
+	r = lib.run(
+		[ 'gcloud', 'dns', 'record-sets', 'transaction', op, '-z', zone, *args ]
+	)
+	return r
 
 
 def wait(*, name, type, target):
@@ -21,7 +36,7 @@ def wait(*, name, type, target):
 		try:
 			answers = {
 				str(b, encoding='ascii')
-				for r in dns.resolver.query(name, 'TXT')
+				for r in dns.resolver.query(name, type)
 				for b in r.strings
 			}
 			if answers == {target}:
@@ -40,32 +55,48 @@ def wait(*, name, type, target):
 
 
 def find(zone, name, type, target=None):
-	for r in zone.records:
+	for r in gcloud_dns_list(zone):
 		if (r.type == type and
-		    f'{r.name}.{zone.domain}' == name and
-		    target is None or r.target == target):
+		    r.name == name and
+		    (target is None or target in r.rrdatas)):
 			yield r
 
 
 def deploy(*, zone, name, type, target):
-	for r in find(zone=zone, name=name, type=type):
-		logging.info(f'will delete record id {r.id} type {r.type} name {r.name} target {r.target}')
-		r.delete()
+	try:
+		gcloud_dns_txn(zone, 'start')
 
-	logging.info(f'will create record type {type} name {name} target {target}')
-	zone.record_create(record_type=type, name=name, target=target, ttl_sec=60)
-	wait(name=name, type=type, target=target)
+		for r in find(zone=zone, name=name, type=type):
+			logging.info(f'will delete record id type {r.type} name {r.name} ttl {r.ttl} RRDATAs {r.rrdatas}')
+			gcloud_dns_txn(zone, 'remove', '--name', r.name, '--type', r.type, '--ttl', f'{r.ttl}', *r.rrdatas)
+
+		logging.info(f'will create record type {type} name {name} target {target}')
+		gcloud_dns_txn(zone, 'add', '--name', name, '--type', type, '--ttl', '60', target)
+
+		gcloud_dns_txn(zone, 'execute')
+		wait(name=name, type=type, target=target)
+	except:
+		gcloud_dns_txn(zone, 'abort')
+		raise
 
 
 def clean(*, zone, name, type, target):
-	# Read existing records
-	found = False
-	for r in find(zone=zone, name=name, type=type, target=target):
-		logging.info(f'will delete record id {r.id} type {r.type} name {r.name} target {r.target}')
-		r.delete()
-		found = True
-	if not found:
-		logging.warn(f'could not find record type {type} name {name} target {target}')
+	try:
+		gcloud_dns_txn(zone, 'start')
+
+		# Read existing records
+		found = False
+		for r in find(zone=zone, name=name, type=type, target=f'"{target}"'):
+			logging.info(f'will delete record id type {r.type} name {r.name} ttl {r.ttl} RRDATAs {r.rrdatas}')
+			gcloud_dns_txn(zone, 'remove', '--name', r.name, '--type', r.type, '--ttl', f'{r.ttl}', *r.rrdatas)
+			found = True
+		if not found:
+			logging.warn(f'could not find record type {type} name {name} target {target}')
+
+		gcloud_dns_txn(zone, 'execute')
+	except:
+		gcloud_dns_txn(zone, 'abort')
+		raise
 
 
 #
@@ -126,21 +157,11 @@ except AttributeError:
 def subdomain_of(subdomain, domain):
 	return subdomain == domain or subdomain.endswith('.' + domain)
 
-config = config.linode
-linode = linode_api4.LinodeClient(config.token)
-zones = [
-	d
-	for d
-	in linode.domains()
-	if subdomain_of(args.domain, d.domain)
-]
-
-if len(zones) != 1:
-	raise RuntimeError(f'DNS-01: {args.domain}: found {len(zones)} matching zones')
+config = config.gcloud
 
 actions[args.action](
-	zone = zones[0],
-	name=f'_acme-challenge.{args.domain}', # zone prefix will be stripped by Linode
+	zone = config.zone,
+	name=f'_acme-challenge.{args.domain}.',
 	target=args.dns_token,
 	type='TXT'
 )

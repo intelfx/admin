@@ -6,49 +6,24 @@ cd "${BASH_SOURCE%/*}"
 host="$1"
 dest="/mnt/data/Backups/Резервные копии сетевых устройств"
 dest="$dest/$host"
-password="$(< /etc/admin/backup-password )"
+password="$(< /etc/admin/keys/backup-password )"
+identity="/etc/admin/keys/id_rsa"
 
-if ! [[ "$host" ]]; then
-	die "mikrotik-backup.sh: host not provided, exiting"
-fi
-
-if ! ping -c 1 -w 5 -q "$host"; then
-	die "mikrotik-backup.sh: host '$host' unresponsive, exiting"
-fi
-
+log "$0: backing up '$host' to '$dest'"
 mkdir -p "$dest"
 
-log "mikrotik-backup.sh: backing up '$host' to '$dest'"
-
-hostaddr="$host"
-if [[ "$host" == *:* ]]; then
-	hostaddr="${host%:*}"
-	hostport="${host##*:}"
-fi
-
-SSH=(
-	-o StrictHostKeyChecking=accept-new
-	-i /etc/admin/id_rsa
-)
-
-function do_ssh() {
-	ssh "${SSH[@]}" ${hostport:+-p "$hostport"} restricted@"$hostaddr" "$@"
-}
-
-function do_sftp() {
-	sftp "${SSH[@]}" ${hostport:+-P "$hostport"} restricted@"$hostaddr" "$@"
-}
-
-host_identity="$(do_ssh ":put [/system identity get name]" | tr -d '\r\n')"
-
-if ! [[ "$host_identity" ]]; then
-	die "mikrotik-backup.sh: host '$host' does not tell us its identity, exiting"
-fi
+ssh_prep
 
 trap "rm -rf '$tempdir'" EXIT
 tempdir="$(mktemp -d)"
 
-log "mikrotik-backup.sh: using identity '$host_identity' for host '$host'"
+host_identity="$(do_ssh ":put [/system identity get name]" | tr -d '\r\n')"
+
+if ! [[ "$host_identity" ]]; then
+	die "$0: host '$host' does not tell us its identity, exiting"
+fi
+
+log "$0: using identity '$host_identity' for host '$host'"
 
 do_ssh <<-EOF
 	/system backup save password="$password" name="auto-backup"

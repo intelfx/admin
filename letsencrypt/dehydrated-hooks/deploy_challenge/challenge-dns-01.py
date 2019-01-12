@@ -129,7 +129,7 @@ lib.configure_logging(prefix=f'DNS-01: {args.domain}: ')
 # load config
 #
 
-config = yaml.load(open('letsencrypt.yaml'))
+config = yaml.load(open('/etc/admin/dns/dns.yaml'))
 config = lib.attrdict(config)
 
 

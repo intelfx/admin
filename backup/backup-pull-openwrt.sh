@@ -6,42 +6,15 @@ cd "${BASH_SOURCE%/*}"
 host="$1"
 dest="/mnt/data/Backups/Резервные копии сетевых устройств"
 dest="$dest/$host"
+identity="/etc/admin/keys/id_rsa"
 
-if ! [[ "$host" ]]; then
-	die "backup-pull-openwrt.sh: host not provided, exiting"
-fi
-
-if ! ping -c 1 -w 5 -q "$host"; then
-	die "backup-pull-openwrt.sh: host '$host' unresponsive, exiting"
-fi
-
+log "$0: backing up openwrt '$host' to '$dest'"
 mkdir -p "$dest"
 
-log "backup-pull-openwrt.sh: backing up '$host' to '$dest'"
-
-hostaddr="$host"
-if [[ "$host" == *:* ]]; then
-	hostaddr="${host%:*}"
-	hostport="${host##*:}"
-fi
-
-SSH=(
-	-o StrictHostKeyChecking=accept-new
-	-i /etc/admin/id_rsa
-)
-
-function do_ssh() {
-	ssh "${SSH[@]}" ${hostport:+-p "$hostport"} root@"$hostaddr" "$@"
-}
-
-function do_sftp() {
-	sftp "${SSH[@]}" ${hostport:+-P "$hostport"} root@"$hostaddr" "$@"
-}
+ssh_prep
 
 trap "rm -rf '$tempdir'" EXIT
 tempdir="$(mktemp -d)"
-
-log "backup-pull-openwrt.sh: using host '$host'"
 
 do_ssh '/root/bin/opkg-get-user-overlay.sh > /root/packages.txt'
 do_ssh 'sysupgrade -b -' > "$tempdir/backup.tar.gz"

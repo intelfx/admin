@@ -10,7 +10,7 @@ FULLCHAIN="$5"
 CHAIN="$6"
 TIMESTAMP="$7"
 
-identity="/etc/admin/id_rsa"
+identity="/etc/admin/keys/id_rsa"
 host="restricted@router.sovereign.i.intelfx.name"
 
 log "$0: pushing cert to mikrotik '$host'"
@@ -20,8 +20,8 @@ ssh_prep
 log "$0: copying cert via sftp"
 
 do_sftp <<-EOF
-	put "$PRIVKEY" /etc/https.key
-	put "$FULLCHAIN" /etc/https.crt
+	put "$PRIVKEY" /https.key
+	put "$FULLCHAIN" /https.crt
 EOF
 
 log "$0: copying OK, now reloading"

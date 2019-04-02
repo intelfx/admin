@@ -38,10 +38,10 @@ hosts = {
 	in [
 		line.split()
 		for line
-		in open(args.hosts, 'r').read().splitlines()
+		in lib.file_get(args.hosts).splitlines()
 	]
 }
 
 actions[args.action]()
 
-open(args.hosts, 'w').write('\n'.join([ f'{ip} {hostname}' for hostname, ip in hosts.items() ]) + '\n')
+lib.file_put(args.hosts, '\n'.join([ f'{ip} {hostname}' for hostname, ip in hosts.items() ]) + '\n')

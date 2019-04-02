@@ -5,14 +5,14 @@ cd "${BASH_SOURCE%/*}"
 
 host="$1"
 dest="/mnt/data/Backups/Резервные копии сетевых устройств"
-dest="$dest/$host"
 password="$(< /etc/admin/keys/backup-password )"
 identity="/etc/admin/keys/id_rsa"
 
+ssh_prep
+dest="$dest/$addr"
+
 log "$0: backing up '$host' to '$dest'"
 mkdir -p "$dest"
-
-ssh_prep
 
 trap "rm -rf '$tempdir'" EXIT
 tempdir="$(mktemp -d)"

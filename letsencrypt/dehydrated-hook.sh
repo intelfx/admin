@@ -5,7 +5,7 @@
 HOOK_DIR="${BASH_SOURCE%/*}/dehydrated-hooks"
 ARGS=()
 
-log "hook: $*"
+log "hook: $(printf "'%s' " "$@")"
 
 while (( $# )); do
 	arg="$1"

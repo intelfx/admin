@@ -68,15 +68,16 @@ def deploy(*, zone, name, type, target):
 
 		for r in find(zone=zone, name=name, type=type):
 			logging.info(f'will delete record id type {r.type} name {r.name} ttl {r.ttl} RRDATAs {r.rrdatas}')
-			gcloud_dns_txn(zone, 'remove', '--name', r.name, '--type', r.type, '--ttl', f'{r.ttl}', *r.rrdatas)
+			gcloud_dns_txn(zone, 'remove', '--name', r.name, '--type', r.type, '--ttl', f'{r.ttl}', '--', *r.rrdatas)
 
 		logging.info(f'will create record type {type} name {name} target {target}')
-		gcloud_dns_txn(zone, 'add', '--name', name, '--type', type, '--ttl', '60', target)
+		gcloud_dns_txn(zone, 'add', '--name', name, '--type', type, '--ttl', '60', '--', target)
 
 		gcloud_dns_txn(zone, 'execute')
 		wait(name=name, type=type, target=target)
 	except:
 		gcloud_dns_txn(zone, 'abort')
+
 		raise
 
 
@@ -88,7 +89,7 @@ def clean(*, zone, name, type, target):
 		found = False
 		for r in find(zone=zone, name=name, type=type, target=f'"{target}"'):
 			logging.info(f'will delete record id type {r.type} name {r.name} ttl {r.ttl} RRDATAs {r.rrdatas}')
-			gcloud_dns_txn(zone, 'remove', '--name', r.name, '--type', r.type, '--ttl', f'{r.ttl}', *r.rrdatas)
+			gcloud_dns_txn(zone, 'remove', '--name', r.name, '--type', r.type, '--ttl', f'{r.ttl}', '--', *r.rrdatas)
 			found = True
 		if not found:
 			logging.warn(f'could not find record type {type} name {name} target {target}')
@@ -120,7 +121,7 @@ parser.add_argument('action', choices=actions.keys())
 parser.add_argument('domain')
 parser.add_argument('challenge_token')
 parser.add_argument('dns_token')
-args = parser.parse_args()
+args = parser.parse_args([ '--' ] + sys.argv)
 
 lib.configure_logging(prefix=f'DNS-01: {args.domain}: ')
 

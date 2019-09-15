@@ -28,6 +28,7 @@ done
 if (( ${#HOOKS[@]} )); then
 	log "hook: running ${#HOOKS[@]} scripts in '$HOOK_DIR'"
 	for f in "${HOOKS[@]}"; do
+		log "hook: running $(printf "'%s' " "$f" "${ARGS[@]}" "$@")"
 		"$f" "${ARGS[@]}" "$@"
 	done
 else

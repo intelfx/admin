@@ -121,7 +121,7 @@ parser.add_argument('action', choices=actions.keys())
 parser.add_argument('domain')
 parser.add_argument('challenge_token')
 parser.add_argument('dns_token')
-args = parser.parse_args([ '--' ] + sys.argv)
+args = parser.parse_args(sys.argv[0:0] + [ '--' ] + sys.argv[1:])
 
 lib.configure_logging(prefix=f'DNS-01: {args.domain}: ')
 

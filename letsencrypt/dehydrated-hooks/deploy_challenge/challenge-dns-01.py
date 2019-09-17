@@ -147,7 +147,7 @@ try:
 	})
 	dns.resolver.default_resolver = R
 except AttributeError:
-	logging.warn('using default resolver, adverse caching may occur')
+	logging.warning('using default resolver, adverse caching may occur')
 	pass
 
 

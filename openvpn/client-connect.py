@@ -32,16 +32,23 @@ args, remainder = parser.parse_known_args()
 
 hostname = os.environ['common_name'].replace('.', '-') + args.suffix
 ip = os.environ['ifconfig_pool_remote_ip']
-hosts = {
-	hostname: ip
-	for ip, hostname
-	in [
-		line.split()
-		for line
-		in lib.file_get(args.hosts).splitlines()
-	]
-}
 
-actions[args.action]()
+with lib.file_lock(args.hosts, 'r+') as f:
+	hosts = {
+		hostname: ip
+		for ip, hostname
+		in [
+			line.split()
+			for line
+			in lib.file_get(args.hosts).splitlines()
+			if line
+		]
+	}
 
-lib.file_put(args.hosts, '\n'.join([ f'{ip} {hostname}' for hostname, ip in hosts.items() ]) + '\n')
+	actions[args.action]()
+
+	lib.file_put(args.hosts, '\n'.join([
+		f'{ip} {hostname}'
+		for hostname, ip
+		in hosts.items()
+	]))

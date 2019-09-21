@@ -22,6 +22,6 @@ if worker_app is None:
 	raise RuntimeError('worker_app not specified')
 
 os.execvp(
-	'python3',
-	[ 'python3', '-m', worker_app ] + sys.argv[1:]
+	sys.executable,
+	[ sys.executable, '-m', worker_app ] + sys.argv[1:]
 )

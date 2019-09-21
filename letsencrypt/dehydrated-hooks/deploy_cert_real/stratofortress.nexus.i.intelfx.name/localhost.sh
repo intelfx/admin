@@ -13,6 +13,16 @@ TIMESTAMP="$7"
 
 BASEDIR="${CERT%/*}"
 
+if ! [[ $TIMESTAMP ]]; then
+	warn "Timestamp is empty, working around"
+	if [[ $(readlink "$PRIVKEY") =~ ([0-9]+)\.pem ]]; then
+		TIMESTAMP="${BASH_REMATCH[1]}"
+		warn "Using timestamp $TIMESTAMP"
+	else
+		die "Timestamp is empty, could not work around"
+	fi
+fi
+
 log "Creating privkey+cert"
 PEM_BUNDLE="privkey+cert-${TIMESTAMP}.pem"
 PEM_BUNDLE_LINK="privkey+cert.pem"

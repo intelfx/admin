@@ -8,7 +8,7 @@ PRIVKEY="$3"
 CERT="$4"
 FULLCHAIN="$5"
 CHAIN="$6"
-TIMESTAMP="$7"
+#TIMESTAMP="$7"
 
 host="root@router.ditaeon.i.intelfx.name"
 identity="/etc/admin/keys/id_rsa"

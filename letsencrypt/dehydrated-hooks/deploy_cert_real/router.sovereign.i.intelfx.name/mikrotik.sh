@@ -8,7 +8,7 @@ PRIVKEY="$3"
 CERT="$4"
 FULLCHAIN="$5"
 CHAIN="$6"
-TIMESTAMP="$7"
+#TIMESTAMP="$7"
 
 identity="/etc/admin/keys/id_rsa"
 host="restricted@router.sovereign.i.intelfx.name"

@@ -39,6 +39,15 @@ function make_fullchain_privkey() {
 	ln -sf "$PEM_BUNDLE" "$BASEDIR/$PEM_BUNDLE_LINK"
 }
 
+function make_pkcs12() {
+	log "Creating PKCS12 keystore"
+	PKCS12_FILE="keystore-${TIMESTAMP}.p12"
+	PKCS12_FILE_LINK="keystore.p12"
+	# write to stdout and redirect because otherwise openssl chmods output 0600 and breaks ACLs
+	openssl pkcs12 -export -in "$FULLCHAIN" -inkey "$PRIVKEY" -out - -name "$SUBDOMAIN" -passout pass: > "$BASEDIR/$PKCS12_FILE"
+	ln -sf "$PKCS12_FILE" "$BASEDIR/$PKCS12_FILE_LINK"
+}
+
 function ssh_cert_to_routeros() {
 	log "$0: pushing cert to routeros at '$host'"
 

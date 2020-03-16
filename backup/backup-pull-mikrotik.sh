@@ -4,7 +4,7 @@ cd "${BASH_SOURCE%/*}"
 . lib/lib.sh
 
 host="$1"
-dest="/mnt/data/Backups/Резервные копии сетевых устройств"
+dest="/mnt/data/Backups/Hosts"
 password="$(< /etc/admin/keys/backup-password )"
 identity="/etc/admin/keys/id_rsa"
 

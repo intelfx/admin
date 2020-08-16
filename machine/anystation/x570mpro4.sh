@@ -2,6 +2,8 @@
 
 . /etc/admin/scripts/lib/lib.sh || exit 1
 
+udevadm settle  # guilty as charged
+
 DEVICE=nct6775.656
 DEVICE_SYSFS="/sys/devices/platform/$DEVICE"
 
@@ -26,6 +28,15 @@ nct6775_write() {
 		echo "$v" > "$device/$k"
 		log "nct6775_write($device): $k = $v"
 	done
+}
+
+nct6775_pwm_maxspeed() {
+	local name="$1"
+	shift
+	nct6775_write \
+		"$name" \
+		enable 0 \
+		"$@"
 }
 
 nct6775_pwm_manual() {
@@ -89,6 +100,7 @@ nct6775_pwm_thermal_cruise pwm6 \
 #done
 
 # pwm4: chassis fan 2 (HDD exhaust)
-nct6775_pwm_manual pwm4 \
-	mode 1 \
-	_ 128
+#nct6775_pwm_manual pwm4 \
+#	mode 1 \
+#	_ 128
+nct6775_pwm_maxspeed pwm4

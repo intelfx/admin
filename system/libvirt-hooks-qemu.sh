@@ -42,21 +42,20 @@ mem_calculate_hugepages() {
 	huge_wasted="$(( mem_size % huge_size ))"
 }
 
-
 rollback_hugepages() {
-	local huge_nr_new="$(< /sys/kernel/mm/hugepages/$huge/nr_hugepages)"
-	log "hugepages($huge): releasing: current=$huge_nr_new, desired=$huge_nr_old"
+	local huge_nr_now="$(< /sys/kernel/mm/hugepages/$huge/nr_hugepages)"
+	log "hugepages($huge): releasing: now=$huge_nr_now, target=$huge_nr_orig"
 
-	if ! echo "$huge_nr_old" >"/sys/kernel/mm/hugepages/$huge/nr_hugepages"; then
+	if ! echo "$huge_nr_orig" >"/sys/kernel/mm/hugepages/$huge/nr_hugepages"; then
 		die "hugepages($huge): releasing: failure"
 	fi
 
 	local huge_nr_actual="$(< /sys/kernel/mm/hugepages/$huge/nr_hugepages)"
-	if ! (( huge_nr_actual == huge_nr_old )); then
-		die "hugepages($huge): releasing: silent failure: freed just $((huge_nr_new-huge_nr_actual)) out of $((huge_nr_new-huge_nr_old)) (current=$huge_nr_actual, desired=$huge_nr_old)"
+	if ! (( huge_nr_actual == huge_nr_orig )); then
+		die "hugepages($huge): releasing: silent failure: freed just $((huge_nr_now-huge_nr_actual)) out of $((huge_nr_now-huge_nr_orig)) (actual=$huge_nr_actual, target=$huge_nr_orig)"
 	fi
 
-	log "hugepages($huge): releasing: success: released $((huge_nr_new-huge_nr_actual)) (current=$huge_nr_actual)"
+	log "hugepages($huge): releasing: success: released $((huge_nr_now-huge_nr_actual)) (actual=$huge_nr_actual)"
 }
 
 prepare_hugepages() {
@@ -72,6 +71,18 @@ prepare_hugepages() {
 
 	# determine how much memory we need
 	mem_size="$(mem_decode_qemu "$mem_value" "$mem_unit")"
+
+	local hugepage_unit hugepage_value hugepage_size
+	hugepage_unit="$(xq_domain -r '.domain.memoryBacking.hugepages.page["@unit"] // "B"')"
+	hugepage_value="$(xq_domain -r '.domain.memoryBacking.hugepages.page["@size"] // 0')"
+
+	# determine which hugepages we want
+	hugepage_size="$(mem_decode_qemu "$hugepage_value" "$hugepage_unit")"
+
+	if ! (( mem_size && hugepage_size )); then
+		log "hugepages not configured -- nothing to do"
+		return
+	fi
 
 	# check if maybe we already preallocated hugepages of a specific non-default size
 	# TODO: rework code below to do the thing above
@@ -102,54 +113,74 @@ prepare_hugepages() {
 	#	return 1
 	#fi
 
-	local huge_size_kb="$(</proc/meminfo sed -nr 's|^Hugepagesize: *([0-9]+) kB$|\1|p')"
-	if ! [[ "$huge_size_kb" ]]; then
-		err "failed to determine default hugepage size"
-	fi
+	#local huge_size_kb="$(</proc/meminfo sed -nr 's|^Hugepagesize: *([0-9]+) kB$|\1|p')"
+	#if ! [[ "$huge_size_kb" ]]; then
+	#	err "failed to determine default hugepage size"
+	#fi
 
 	local huge huge_size huge_count huge_wasted
-	huge="hugepages-${huge_size_kb}kB"
-	huge_size=$((huge_size_kb*1024))
+	huge="hugepages-$(( hugepage_size / 1024 ))kB"
+	huge_size="$hugepage_size"
 	mem_calculate_hugepages # sets huge_count, huge_wasted
 
 	log "hugepages($huge): allocating $huge_count to fulfill $mem_size bytes (expecting to waste $huge_wasted bytes)"
 
-	local huge_nr_old="$(< /sys/kernel/mm/hugepages/$huge/nr_hugepages)"
-	local huge_nr_new="$(( huge_nr_old + huge_count ))"
-	log "hugepages($huge): allocating: old=$huge_nr_old, new=$huge_nr_new"
+	local sysfs_huge_free="$(< /sys/kernel/mm/hugepages/$huge/free_hugepages)"
+	local sysfs_huge_resv="$(< /sys/kernel/mm/hugepages/$huge/resv_hugepages)"
+	local sysfs_huge_nr="$(< /sys/kernel/mm/hugepages/$huge/nr_hugepages)"
+
+	local behavior=dontfree
+	#if (( huge_free - huge_resv > 0 )); then
+	#	log "hugepages($huge): have preallocated hugepages, model=topup"
+	#	behavior=dontfree
+	#else
+	#	log "hugepages($huge): no preallocated hugepages, model=private"
+	#	behavior=free
+	#fi
+
+	local huge_nr_orig="$(< /sys/kernel/mm/hugepages/$huge/nr_hugepages)"
 	ltrap 'rollback_hugepages'
 	local i fail=1
-	for (( i = 1; i <= 10; ++i )); do
+	for (( i = 1; i <= 100; ++i )); do
+		local huge_free="$(< /sys/kernel/mm/hugepages/$huge/free_hugepages)"
+		local huge_resv="$(< /sys/kernel/mm/hugepages/$huge/resv_hugepages)"
+		local huge_nr_now="$(< /sys/kernel/mm/hugepages/$huge/nr_hugepages)"
+		local huge_nr_target="$(( huge_nr_now + huge_count - (huge_free - huge_resv) ))"
 		if (( i > 1 )); then
 			log "hugepages($huge): allocating (try $i): dropping caches"
 			sync
 			sysctl vm.drop_caches=3
 			sysctl vm.compact_memory=1
 		fi
-		if ! echo "$huge_nr_new" >/sys/kernel/mm/hugepages/$huge/nr_hugepages; then
+		log "hugepages($huge): allocating (try $i): orig=$huge_nr_orig, now=$huge_nr_now, target=$huge_nr_target"
+		if ! echo "$huge_nr_target" >/sys/kernel/mm/hugepages/$huge/nr_hugepages; then
 			log "hugepages($huge): allocating (try $i): failure, retrying in 100ms"
 			sleep 0.1
 			continue
 		fi
 
+		local huge_free_actual="$(< /sys/kernel/mm/hugepages/$huge/free_hugepages)"
+		local huge_resv_actual="$(< /sys/kernel/mm/hugepages/$huge/resv_hugepages)"
 		local huge_nr_actual="$(< /sys/kernel/mm/hugepages/$huge/nr_hugepages)"
-		if ! (( huge_nr_actual >= huge_nr_new )); then
-			log "hugepages($huge): allocating (try $i): silent failure: allocated just $((huge_nr_actual-huge_nr_old)) out of $((huge_nr_new-huge_nr_old)) (current=$huge_nr_actual, desired=$huge_nr_new), retrying in 100ms"
+		if ! (( (huge_free_actual - huge_resv_actual) >= huge_count )); then
+			log "hugepages($huge): allocating (try $i): silent failure: have just $((huge_free_actual-huge_resv_actual)) out of $huge_count (actual=$huge_nr_actual, target=$huge_nr_target), retrying in 100ms"
 			sleep 0.1
 			continue
 		fi
 
-		log "hugepages($huge): allocating (try $i): success: allocated $((huge_nr_actual-huge_nr_old)) (new=$huge_nr_actual)"
+		log "hugepages($huge): allocating (try $i): success: have $huge_free_actual, need $huge_count"
 		fail=0
 		break
 	done
 	if (( fail )); then
-		die "hugepages($huge): allocating: exceeded attempts, releasing $((huge_nr_actual-huge_nr_old)) allocated so far"
+		die "hugepages($huge): allocating: exceeded attempts, releasing $((huge_nr_actual-huge_nr_orig)) allocated so far"
 	fi
 
 	STATE_FILE="$STATE_DIR/hugepages/$GUEST_NAME"
 	mkdir -p "${STATE_FILE%/*}"
-	echo "$huge $huge_count" >"$STATE_FILE"
+	if [[ $behavior == free ]]; then
+		echo "$huge $huge_count" >"$STATE_FILE"
+	fi
 	luntrap
 }
 
@@ -179,8 +210,8 @@ release_hugepages() {
 
 	log "hugepages($huge): releasing $huge_count"
 
-	local huge_nr_new="$(< /sys/kernel/mm/hugepages/$huge/nr_hugepages)"
-	local huge_nr_old="$(( huge_nr_new - huge_count ))"
+	local huge_nr_actual="$(< /sys/kernel/mm/hugepages/$huge/nr_hugepages)"
+	local huge_nr_orig="$(( huge_nr_actual - huge_count ))"
 
 	rollback_hugepages
 
@@ -220,7 +251,8 @@ configure_governor() {
 	local c
 	for c in "${cpus[@]}"; do
 		if ! [[ $c =~ ^[0-9]+$ ]]; then
-			die "unsupported cpuset $c (only single CPUs are supported)"
+			err "unsupported cpuset $c (only single CPUs are supported)"
+			return
 		fi
 	done
 
@@ -241,6 +273,11 @@ configure_governor() {
 		fi
 	done
 	log "configuring cpufreq governor: configured ${#cpus[@]} cpus"
+
+	if [[ -d /sys/devices/system/cpu/cpufreq/ondemand ]]; then
+		log "configuring ondemand: up_threshold=10"
+		echo 10 > /sys/devices/system/cpu/cpufreq/ondemand/up_threshold
+	fi
 
 	STATE_FILE="$STATE_DIR/cpufreq/$GUEST_NAME"
 	mkdir -p "${STATE_FILE%/*}"
@@ -290,11 +327,11 @@ xq_domain() {
 
 case "$OPERATION/$STAGE" in
 'prepare/begin')
-	#prepare_hugepages
+	prepare_hugepages
 	configure_governor
 	;;
 'release/end')
-	#release_hugepages
+	release_hugepages
 	restore_governor
 	;;
 esac

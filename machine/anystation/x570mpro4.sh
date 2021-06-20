@@ -89,12 +89,23 @@ nct6775_pwm_curve() {
 }
 
 profile_performance() {
-	liquidctl -m 'H100i' --non-volatile set fan speed \
+	# H100i: CPU exhaust
+	liquidctl -m 'H100i' set fan speed \
 		20 $h100i_quiet \
 		25 $h100i_quiet \
 		30 $h100i_loud \
-		33 $h100i_loud \
-		35 100
+		36 $h100i_loud \
+		40 100
+
+	# Commander fan1, fan2: left chamber fan (CPU/GPU top intake, CPU/GPU bottom intake)
+	for fan in fan1 fan2; do
+		liquidctl -m 'Commander Pro' set $fan speed $case_loud
+	done
+
+	# Commander fan4, fan6: right chamber fan (HDD intake, exhaust)
+	for fan in fan4 fan6; do
+		liquidctl -m 'Commander Pro' set $fan speed $case_quiet
+	done
 
 	# pwm6: PCH fan
 	# temp7 (SMBUSMASTER 1): PCH
@@ -137,9 +148,9 @@ profile_performance() {
 	#	temp_tolerance 2000 \
 	#	crit_temp_tolerance 5000 \
 	#	stop_time 30000 \
-	nct6775_pwm_manual pwm4 \
-		mode 1 \
-		_ $hddfan_quiet
+	#nct6775_pwm_manual pwm4 \
+	#	mode 1 \
+	#	_ $hddfan_quiet
 	#nct6775_pwm_maxspeed pwm4
 
 	# pwm1: chassis fan (main/top intake)
@@ -153,12 +164,22 @@ profile_performance() {
 }
 
 profile_normal() {
-	liquidctl -m 'H100i' --non-volatile set fan speed \
+	liquidctl -m 'H100i' set fan speed \
 		20 $h100i_quiet \
 		25 $h100i_quiet \
 		28 $h100i_quiet \
-		35 $h100i_loud \
+		36 $h100i_loud \
 		40 100
+
+	# Commander fan1, fan2: left chamber fan (CPU/GPU top intake, CPU/GPU bottom intake)
+	for fan in fan1 fan2; do
+		liquidctl -m 'Commander Pro' set $fan speed $case_quiet
+	done
+
+	# Commander fan4, fan6: right chamber fan (HDD intake, exhaust)
+	for fan in fan4 fan6; do
+		liquidctl -m 'Commander Pro' set $fan speed $case_quiet
+	done
 
 	# pwm6: PCH fan
 	# temp7 (SMBUSMASTER 1): PCH
@@ -202,9 +223,9 @@ profile_normal() {
 	#	temp_tolerance 2000 \
 	#	crit_temp_tolerance 5000 \
 	#	stop_time 30000 \
-	nct6775_pwm_manual pwm4 \
-		mode 1 \
-		_ $hddfan_quiet
+	#nct6775_pwm_manual pwm4 \
+	#	mode 1 \
+	#	_ $hddfan_quiet
 	#nct6775_pwm_maxspeed pwm4
 
 	# pwm1: chassis fan (main/top intake)
@@ -235,12 +256,22 @@ profile_normal() {
 }
 
 profile_quiet() {
-	liquidctl -m 'H100i' --non-volatile set fan speed \
+	liquidctl -m 'H100i' set fan speed \
 		20 $h100i_silent \
 		25 $h100i_quiet \
 		30 $h100i_quiet \
-		35 $h100i_quiet \
+		36 $h100i_quiet \
 		40 100
+
+	# Commander fan1, fan2: left chamber fan (CPU/GPU top intake, CPU/GPU bottom intake)
+	for fan in fan1 fan2; do
+		liquidctl -m 'Commander Pro' set $fan speed $case_silent
+	done
+
+	# Commander fan4, fan6: right chamber fan (HDD intake, exhaust)
+	for fan in fan4 fan6; do
+		liquidctl -m 'Commander Pro' set $fan speed $case_silent
+	done
 
 	# pwm6: PCH fan
 	# temp7 (SMBUSMASTER 1): PCH
@@ -285,9 +316,9 @@ profile_quiet() {
 	#	temp_tolerance 2000 \
 	#	crit_temp_tolerance 5000 \
 	#	stop_time 30000 \
-	nct6775_pwm_manual pwm4 \
-		mode 1 \
-		_ $hddfan_quiet
+	#nct6775_pwm_manual pwm4 \
+	#	mode 1 \
+	#	_ $hddfan_quiet
 
 	# pwm1: chassis fan (main/top intake)
 	# pwm2: CPU fan 2 (140mm)
@@ -340,6 +371,13 @@ h100i_silent=40
 h100i_quiet=43
 # 60: ~1500 RPM, maximum acceptable noise
 h100i_loud=60
+
+# 60: ~800 RPM, definitely inaudible
+case_silent=60
+# 75: ~1000 RPM, almost unnoticeable
+case_quiet=75
+# 100: ~1300-1400 RPM, definitely noticeable
+case_loud=100
 
 if (( $# > 1 )); then
 	die "Expected 0 or 1 arguments, got $#"

@@ -40,4 +40,4 @@ do_sftp <<-EOF
 EOF
 
 rm -rf "$dest"/*
-mv "$tempdir"/* "$dest"/
+rsync -rt --delete "$tempdir"/ "$dest"/

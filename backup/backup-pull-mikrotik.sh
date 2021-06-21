@@ -5,7 +5,7 @@ cd "${BASH_SOURCE%/*}"
 
 host="$1"
 dest="/mnt/data/Backups/Hosts"
-password="$(< /etc/admin/keys/backup-password )"
+password="$(< /etc/admin/keys/backup-mikrotik )"
 identity="/etc/admin/keys/id_rsa"
 
 ssh_prep

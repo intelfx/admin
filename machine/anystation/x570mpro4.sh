@@ -88,6 +88,15 @@ nct6775_pwm_curve() {
 		enable 5
 }
 
+initialize() {
+	if [[ -e /run/x570mpro4 ]]; then return; fi
+	liquidctl -m 'Commander Pro' initialize || true
+	liquidctl -m 'HX1000i' initialize --single-12v-ocp || true
+	liquidctl -m 'HX1000i' set fan speed 30 || true
+	liquidctl -m 'H100i' initialize --pump-mode balanced || true
+	touch /run/x570mpro4
+}
+
 profile_performance() {
 	# H100i: CPU exhaust
 	liquidctl -m 'H100i' set fan speed \
@@ -397,4 +406,5 @@ min|quiet|silent)
 esac
 
 log "Using profile: '$ARG_PROFILE'"
+initialize
 "profile_$PROFILE"

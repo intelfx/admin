@@ -27,17 +27,17 @@ log "$0: using identity '$host_identity' for host '$host'"
 
 do_ssh <<-EOF
 	/system backup save password="$password" name="auto-backup"
-	/export compact file="auto-backup.rsc"
-	/export verbose file="auto-backup-verbose.rsc"
 EOF
+	#/export compact file="auto-backup.rsc"
+	#/export verbose file="auto-backup-verbose.rsc"
 
 do_sftp <<-EOF
 	lcd "$tempdir"
 	get auto-backup.backup "$host_identity.backup"
-	get auto-backup.rsc "$host_identity.rsc"
-	get auto-backup-verbose.rsc "$host_identity-verbose.rsc"
 	rm auto-backup*
 EOF
+	#get auto-backup.rsc "$host_identity.rsc"
+	#get auto-backup-verbose.rsc "$host_identity-verbose.rsc"
 
 rm -rf "$dest"/*
 rsync -rt --delete "$tempdir"/ "$dest"/

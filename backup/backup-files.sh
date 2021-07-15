@@ -145,8 +145,10 @@ for dir in "${special_macrium_p[@]}"; do
 
 		week="$(( 7 * 24 * 3600 ))"
 		if (( local_mtime >= remote_mtime + week )); then
-			log "$dir: $file: remote ($remote_file) older than local by 1 week or more, will transfer in full"
-			continue
+			# FIXME
+			#log "$dir: $file: remote ($remote_file) older than local by 1 week or more, will transfer in full"
+			#continue
+			log "$dir: $file: remote ($remote_file) older than local by 1 week or more, but ignoring this"
 		fi
 
 		log "$dir: $file: remote ($remote_file) is not old enough, will only transfer new incrementals"

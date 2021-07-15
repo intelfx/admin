@@ -22,8 +22,10 @@ PROCESS_MACRIUM=1
 
 # rsync does not have any facilities to filter by "tag files" (CACHEDIR.TAG),
 # sunrise by hand
-exclusions="$(mktemp)"
+targets="$(mktemp)"
 inclusions="$(mktemp)"
+exclusions="$(mktemp)"
+all="$(mktemp)"
 
 # directories with special transfer rules
 special_macrium="$(mktemp)"
@@ -32,7 +34,7 @@ special_incrementals="$(mktemp)"
 special_incrementals_l="$(mktemp)"
 
 cleanup() {
-	rm -f "$exclusions" "$inclusions" "$special_macrium" "$special_borg" "$special_incrementals" "$special_incrementals_l"
+	rm -f "$all" "$targets" "$inclusions" "$exclusions" "$special_macrium" "$special_borg" "$special_incrementals" "$special_incrementals_l"
 }
 trap cleanup TERM HUP INT EXIT
 
@@ -44,18 +46,26 @@ find . \
 	-type f \
 	-name DONTBORG.TAG \
 	-printf '%h\n' \
-	>"$inclusions"
-#echo "./Backups/SMB/smb-arcadia/13801F63CD94DFCF-02-02.mrimg" >"$inclusions"
-readarray -t inclusions_p <"$inclusions"
+	>"$targets"
+#echo "./Backups/SMB/smb-arcadia/13801F63CD94DFCF-02-02.mrimg" >"$targets"
+readarray -t targets_p <"$targets"
 
-find "${inclusions_p[@]}" \
+find "${targets_p[@]}" \
 	-type f \
 	\( -name CACHEDIR.TAG -or -name NOBACKUP.TAG \) \
 	-printf '%h\n' \
 	>"$exclusions"
+readarray -t exclusions_p <"$exclusions"
+
+find "${exclusions_p[@]}" \
+	-type f \
+	-name BACKUP.TAG \
+	-printf '%h\n' \
+	>"$inclusions"
+readarray -t inclusions_p <"$inclusions"
 
 # checks whether $1 contains Macrium Reflect backup sets
-find "${inclusions_p[@]}" \
+find "${targets_p[@]}" \
 	-type f \
 	-name '*.mrimg' \
 	-printf '%h\n' \
@@ -63,7 +73,7 @@ find "${inclusions_p[@]}" \
 	>"$special_macrium"
 
 # some less-than-superficial checks whether $1 is a borg repository
-find "${inclusions_p[@]}" \
+find "${targets_p[@]}" \
 	-type f \
 	-name 'config' \
 	-execdir test -d 'data' \; \
@@ -73,7 +83,10 @@ find "${inclusions_p[@]}" \
 
 #printf '%s\n' \
 #	"./Backups/SMB/smb-arcadia/test/" \
-#	>"$inclusions"
+#	>"$targets"
+
+echo "TARGETS:"
+cat $targets; echo
 
 echo "EXCLUSIONS:"
 cat $exclusions; echo
@@ -164,6 +177,7 @@ do_rsync_with_filters() {
 
 # specify all paths with a leading / because that's how you anchor rsync patterns to the root of the transfer.
 sed -r 's|^\./|/|' \
+	-i "$targets" \
 	-i "$inclusions" \
 	-i "$exclusions" \
 	-i "$special_incrementals" \
@@ -179,8 +193,10 @@ do_rsync_with_filters \
 	--exclude='*' \
 	"$@"
 
+	#--files-from="$targets" \
+	#--files-from="$inclusions" \
 do_rsync_with_filters \
-	--files-from="$inclusions" \
+	--files-from=<(cat "$targets" "$inclusions") \
 	--exclude-from="$exclusions" \
 	--exclude-from="$special_incrementals" \
 	"$@"

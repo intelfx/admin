@@ -5,6 +5,12 @@
 STATE_DIR="/run/libvirt/qemu-hook"
 VCPU_GOVERNOR=ondemand
 VCPU_ONDEMAND_THRESHOLD=10
+ISOLATE_SLICES=(
+	kthread.slice
+	system.slice
+	user.slice
+	machine.slice
+)
 
 #
 # hugepage support
@@ -310,6 +316,93 @@ cpufreq_teardown() {
 	rm -f "$STATE_FILE"
 }
 
+cgroup_apply() {
+	local all_cpus
+	all_cpus="$(< /sys/devices/system/cpu/online)"
+
+	log "cpus: state file:"
+
+	local isolate_cpus
+	local isolate_cpus_l
+	cat "$STATE_FILE" | { grep -Eo '^[0-9,-]+' || true; } | readarray -t isolate_cpus_l
+	declare -p isolate_cpus_l
+	isolate_cpus="$(list_or "${isolate_cpus_l[@]}")"
+
+	local host_cpus
+	host_cpus="$(list_sub "$all_cpus" "$isolate_cpus")"
+
+	local host_cpus_mask
+	host_cpus_mask="$(list_into_mask "$host_cpus" "$(list_max "$all_cpus")")"
+
+	log "cpus: all=$all_cpus, isolated=$isolate_cpus, host=$host_cpus ($host_cpus_mask)"
+
+	# configure cgroup affinity
+	local slice
+	for slice in "${ISOLATE_SLICES[@]}"; do
+		log "cpus: cgroup: setting $slice to $host_cpus"
+		systemctl set-property "$slice" AllowedCPUs="$host_cpus"
+	done
+
+	# configure irq affinity
+	local irqbalance_sock=(/run/irqbalance/irqbalance*.sock)
+	if [[ -S "$irqbalance_sock" ]]; then
+		log "cpus: irq: setting irqbalance at $irqbalance_sock to $host_cpus"
+		socat -,ignoreeof "$irqbalance_sock" <<<"settings cpus $host_cpus" >&2
+		socat -,ignoreeof "$irqbalance_sock" <<<"setup" >&2
+		echo >&2
+	fi
+
+	# configure workqueues
+	declare -a workqueues
+	find /sys/bus/workqueue/devices -mindepth 1 -maxdepth 1 -xtype d | readarray -t workqueues
+	local wq
+	for wq in "${workqueues[@]}"; do
+		if [[ -w "$wq/cpumask" ]]; then
+			log "cpus: workqueue: setting $wq to $host_cpus_mask"
+			echo "$host_cpus_mask" >"$wq/cpumask"
+		else
+			log "cpus: workqueue: cannot configure $wq, skipping"
+		fi
+	done
+}
+
+cgroup_setup() {
+	eval "$(ltraps)"
+
+	local LIBSH_LOG_PREFIX="qemu::cgroup_setup($GUEST_NAME)"
+
+	log "isolating pinned CPUs"
+
+	local new_cpus
+	declare -a new_cpus_l
+	xq_domain -r '.domain.cputune.vcpupin[]["@cpuset"]' | readarray -t new_cpus_l
+	new_cpus="$(list_or "${new_cpus_l[@]}")"
+
+	STATE_FILE="$STATE_DIR/cpus"
+	mkdir -p "${STATE_FILE%/*}"
+	echo "$new_cpus  # guest=$GUEST_NAME" >>"$STATE_FILE"
+	ltrap 'cgroup_teardown'
+
+	cgroup_apply
+	luntrap
+}
+
+cgroup_teardown() {
+	local LIBSH_LOG_PREFIX="qemu::cgroup_teardown($GUEST_NAME)"
+
+	log "freeing pinned CPUs"
+
+	STATE_FILE="$STATE_DIR/cpus"
+	if ! [[ -e "$STATE_FILE" ]]; then
+		warn "state file does not exist: $STATE_FILE"
+		return 0
+	fi
+
+	sed -r "/guest=$GUEST_NAME/d" -i "$STATE_FILE"
+
+	cgroup_apply
+}
+
 if ! [[ -t 2 ]]; then
 	exec 2> >(systemd-cat -t libvirt-hook)
 fi
@@ -334,9 +427,11 @@ case "$OPERATION/$STAGE" in
 'prepare/begin')
 	hugepages_setup
 	cpufreq_setup
+	cgroup_setup
 	;;
 'release/end')
 	hugepages_teardown
 	cpufreq_teardown
+	cgroup_teardown
 	;;
 esac

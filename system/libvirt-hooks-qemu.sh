@@ -5,6 +5,10 @@
 STATE_DIR="/run/libvirt/qemu-hook"
 VCPU_GOVERNOR=ondemand
 
+#
+# hugepage support
+#
+
 mem_decode_qemu() {
 	local mem_value="$1" mem_unit="$2"
 	log "domain memory: value=$mem_value unit=$mem_unit"
@@ -37,12 +41,8 @@ mem_decode_sysfs_hugepages() {
 	echo "$value"
 }
 
-mem_calculate_hugepages() {
-	huge_count="$(( (mem_size+huge_size-1) / huge_size ))"
-	huge_wasted="$(( mem_size % huge_size ))"
-}
-
-rollback_hugepages() {
+hugepages_rollback() {
+	# input: $huge_nr_orig
 	local huge_nr_now="$(< /sys/kernel/mm/hugepages/$huge/nr_hugepages)"
 	log "hugepages($huge): releasing: now=$huge_nr_now, target=$huge_nr_orig"
 
@@ -58,11 +58,10 @@ rollback_hugepages() {
 	log "hugepages($huge): releasing: success: released $((huge_nr_now-huge_nr_actual)) (actual=$huge_nr_actual)"
 }
 
-prepare_hugepages() {
+hugepages_setup() {
 	eval "$(ltraps)"
 
-	LIBSH_LOG_PREFIX="qemu::prepare_hugepages($GUEST_NAME)"
-	ltrap 'LIBSH_LOG_PREFIX='
+	local LIBSH_LOG_PREFIX="qemu::hugepages_setup($GUEST_NAME)"
 
 	log "reserving hugepages"
 	local mem_unit mem_value mem_size
@@ -121,31 +120,38 @@ prepare_hugepages() {
 	local huge huge_size huge_count huge_wasted
 	huge="hugepages-$(( hugepage_size / 1024 ))kB"
 	huge_size="$hugepage_size"
-	mem_calculate_hugepages # sets huge_count, huge_wasted
+	huge_count="$(( (mem_size+huge_size-1) / huge_size ))"
+	huge_wasted="$(( mem_size % huge_size ))"
 
 	log "hugepages($huge): allocating $huge_count to fulfill $mem_size bytes (expecting to waste $huge_wasted bytes)"
 
 	local sysfs_huge_free="$(< /sys/kernel/mm/hugepages/$huge/free_hugepages)"
 	local sysfs_huge_resv="$(< /sys/kernel/mm/hugepages/$huge/resv_hugepages)"
 	local sysfs_huge_nr="$(< /sys/kernel/mm/hugepages/$huge/nr_hugepages)"
+	local sysfs_huge_avail="$(( sysfs_huge_free - sysfs_huge_resv ))"
 
-	local behavior=dontfree
-	#if (( huge_free - huge_resv > 0 )); then
-	#	log "hugepages($huge): have preallocated hugepages, model=topup"
-	#	behavior=dontfree
-	#else
-	#	log "hugepages($huge): no preallocated hugepages, model=private"
-	#	behavior=free
-	#fi
+	local huge_behavior
+	if (( sysfs_huge_avail >= huge_count )); then
+		log "hugepages($huge): have preallocated hugepages (free - resv = $sysfs_huge_avail >= $huge_count), behavior=use"
+		huge_behavior="use"
+	else
+		log "hugepages($huge): no preallocated hugepages (free - resv = $sysfs_huge_avail < $huge_count), behavior=allocate"
+		huge_behavior="allocate"
+	fi
+
+	if [[ $huge_behavior == use ]]; then
+		return  # right?
+	fi
 
 	local huge_nr_orig="$(< /sys/kernel/mm/hugepages/$huge/nr_hugepages)"
-	ltrap 'rollback_hugepages'
+	ltrap 'hugepages_rollback'
 	local i fail=1
 	for (( i = 1; i <= 100; ++i )); do
 		local huge_free="$(< /sys/kernel/mm/hugepages/$huge/free_hugepages)"
 		local huge_resv="$(< /sys/kernel/mm/hugepages/$huge/resv_hugepages)"
+		local huge_avail=$(( huge_free - huge_resv ))
 		local huge_nr_now="$(< /sys/kernel/mm/hugepages/$huge/nr_hugepages)"
-		local huge_nr_target="$(( huge_nr_now + huge_count - (huge_free - huge_resv) ))"
+		local huge_nr_target="$(( huge_nr_now + huge_count - huge_avail ))"
 		if (( i > 1 )); then
 			log "hugepages($huge): allocating (try $i): dropping caches"
 			sync
@@ -161,9 +167,10 @@ prepare_hugepages() {
 
 		local huge_free_actual="$(< /sys/kernel/mm/hugepages/$huge/free_hugepages)"
 		local huge_resv_actual="$(< /sys/kernel/mm/hugepages/$huge/resv_hugepages)"
+		local huge_avail_actual="$(( huge_free_actual - huge_resv_actual ))"
 		local huge_nr_actual="$(< /sys/kernel/mm/hugepages/$huge/nr_hugepages)"
-		if ! (( (huge_free_actual - huge_resv_actual) >= huge_count )); then
-			log "hugepages($huge): allocating (try $i): silent failure: have just $((huge_free_actual-huge_resv_actual)) out of $huge_count (actual=$huge_nr_actual, target=$huge_nr_target), retrying in 100ms"
+		if ! (( huge_avail_actual >= huge_count )); then
+			log "hugepages($huge): allocating (try $i): silent failure: have just $huge_avail_actual out of $huge_count (actual=$huge_nr_actual, target=$huge_nr_target), retrying in 100ms"
 			sleep 0.1
 			continue
 		fi
@@ -178,17 +185,15 @@ prepare_hugepages() {
 
 	STATE_FILE="$STATE_DIR/hugepages/$GUEST_NAME"
 	mkdir -p "${STATE_FILE%/*}"
-	if [[ $behavior == free ]]; then
-		echo "$huge $huge_count" >"$STATE_FILE"
-	fi
+	cat <<-EOF >"$STATE_FILE"
+	huge=$huge
+	huge_count=$huge_count
+	EOF
 	luntrap
 }
 
-release_hugepages() {
-	eval "$(ltraps)"
-
-	LIBSH_LOG_PREFIX="qemu::release_hugepages($GUEST_NAME)"
-	ltrap 'LIBSH_LOG_PREFIX='
+hugepages_teardown() {
+	local LIBSH_LOG_PREFIX="qemu::hugepages_teardown($GUEST_NAME)"
 
 	log "releasing hugepages"
 
@@ -199,26 +204,28 @@ release_hugepages() {
 	fi
 
 	local huge huge_count
-	read huge huge_count <"$STATE_FILE"
+	. "$STATE_FILE"
 
 	if ! [[ -e "/sys/kernel/mm/hugepages/$huge/nr_hugepages" ]]; then
 		die "malformed state file: hugepages type '$huge' does not exist"
 	fi
-	if !  (( huge_count > 0 )); then
-		die "malformed state file: hugepages count $huge_count is not a positive integer"
+	if ! (( huge_count > 0 )); then
+		die "malformed state file: hugepages count '$huge_count' is not a positive integer"
 	fi
 
 	log "hugepages($huge): releasing $huge_count"
 
-	local huge_nr_actual="$(< /sys/kernel/mm/hugepages/$huge/nr_hugepages)"
 	local huge_nr_orig="$(( huge_nr_actual - huge_count ))"
-
-	rollback_hugepages
+	hugepages_rollback
 
 	rm -f "$STATE_FILE"
 }
 
-rollback_governor() {
+#
+# cpufreq support
+#
+
+cpufreq_rollback() {
 	IFS=,
 	local cpus_list="${!governor_state[*]}"
 	unset IFS
@@ -238,11 +245,10 @@ rollback_governor() {
 	log "restoring cpufreq governor: restored ${#governor_state[@]} cpus"
 }
 
-configure_governor() {
+cpufreq_setup() {
 	eval "$(ltraps)"
 
-	LIBSH_LOG_PREFIX="qemu::configure_governor($GUEST_NAME)"
-	ltrap "LIBSH_LOG_PREFIX="
+	local LIBSH_LOG_PREFIX="qemu::cpufreq_setup($GUEST_NAME)"
 
 	log "configuring cpufreq governor for pinned CPUs"
 	declare -a cpus
@@ -262,7 +268,7 @@ configure_governor() {
 
 	log "configuring cpufreq governor: cpus=${cpus_list} governor=${governor_new}"
 	declare -A governor_state
-	ltrap 'rollback_governor'
+	ltrap 'cpufreq_rollback'
 	local c governor_file governor_new="$VCPU_GOVERNOR"
 	for c in "${cpus[@]}"; do
 		governor_file="/sys/devices/system/cpu/cpu$c/cpufreq/scaling_governor"
@@ -285,8 +291,8 @@ configure_governor() {
 	luntrap
 }
 
-restore_governor() {
-	LIBSH_LOG_PREFIX="qemu::restore_governor($GUEST_NAME)"
+cpufreq_teardown() {
+	local LIBSH_LOG_PREFIX="qemu::cpufreq_teardown($GUEST_NAME)"
 
 	log "restoring cpufreq governor for previously configured CPUs"
 
@@ -298,11 +304,9 @@ restore_governor() {
 
 	source "$STATE_FILE"
 
-	rollback_governor
+	cpufreq_rollback
 
 	rm -f "$STATE_FILE"
-
-	LIBSH_LOG_PREFIX=
 }
 
 if ! [[ -t 2 ]]; then
@@ -311,7 +315,7 @@ fi
 
 eval "$(globaltraps)"
 
-(( $# == 4 )) || die "Bad usage: $0 $* (expected 4 arguments, got $#))"
+(( $# == 4 )) || die "Bad usage: $0 $* (expected 4 arguments, got $#)"
 GUEST_NAME="$1"
 OPERATION="$2"
 STAGE="$3"
@@ -327,11 +331,11 @@ xq_domain() {
 
 case "$OPERATION/$STAGE" in
 'prepare/begin')
-	prepare_hugepages
-	configure_governor
+	hugepages_setup
+	cpufreq_setup
 	;;
 'release/end')
-	release_hugepages
-	restore_governor
+	hugepages_teardown
+	cpufreq_teardown
 	;;
 esac

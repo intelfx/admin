@@ -4,6 +4,7 @@
 
 STATE_DIR="/run/libvirt/qemu-hook"
 VCPU_GOVERNOR=ondemand
+VCPU_ONDEMAND_THRESHOLD=10
 
 #
 # hugepage support
@@ -281,8 +282,8 @@ cpufreq_setup() {
 	log "configuring cpufreq governor: configured ${#cpus[@]} cpus"
 
 	if [[ -d /sys/devices/system/cpu/cpufreq/ondemand ]]; then
-		log "configuring ondemand: up_threshold=10"
-		echo 10 > /sys/devices/system/cpu/cpufreq/ondemand/up_threshold
+		log "configuring ondemand: up_threshold=$VCPU_ONDEMAND_THRESHOLD"
+		echo "$VCPU_ONDEMAND_THRESHOLD" >/sys/devices/system/cpu/cpufreq/ondemand/up_threshold
 	fi
 
 	STATE_FILE="$STATE_DIR/cpufreq/$GUEST_NAME"

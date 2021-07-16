@@ -375,7 +375,8 @@ cgroup_setup() {
 
 	local new_cpus
 	declare -a new_cpus_l
-	xq_domain -r '.domain.cputune.vcpupin[]["@cpuset"]' | readarray -t new_cpus_l
+	# only consider vCPUs pinned to specific CPUs, not ranges
+	xq_domain -r '.domain.cputune.vcpupin[]["@cpuset"]' | { grep -Ex '[0-9]+' || true; } | readarray -t new_cpus_l
 	new_cpus="$(list_or "${new_cpus_l[@]}")"
 
 	STATE_FILE="$STATE_DIR/cpus"

@@ -340,7 +340,7 @@ cgroup_apply() {
 	local slice
 	for slice in "${ISOLATE_SLICES[@]}"; do
 		log "cpus: cgroup: setting $slice to $host_cpus"
-		systemctl set-property "$slice" AllowedCPUs="$host_cpus"
+		systemctl set-property --runtime "$slice" AllowedCPUs="$host_cpus"
 	done
 
 	# configure irq affinity

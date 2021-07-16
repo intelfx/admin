@@ -378,6 +378,9 @@ cgroup_setup() {
 	# only consider vCPUs pinned to specific CPUs, not ranges
 	xq_domain -r '.domain.cputune.vcpupin[]["@cpuset"]' | { grep -Ex '[0-9]+' || true; } | readarray -t new_cpus_l
 	new_cpus="$(list_or "${new_cpus_l[@]}")"
+	if ! [[ $new_cpus ]]; then
+		return
+	fi
 
 	STATE_FILE="$STATE_DIR/cpus"
 	mkdir -p "${STATE_FILE%/*}"
@@ -396,6 +399,10 @@ cgroup_teardown() {
 	STATE_FILE="$STATE_DIR/cpus"
 	if ! [[ -e "$STATE_FILE" ]]; then
 		warn "state file does not exist: $STATE_FILE"
+		return 0
+	fi
+
+	if ! grep -F "guest=$GUEST_NAME" "$STATE_FILE"; then
 		return 0
 	fi
 

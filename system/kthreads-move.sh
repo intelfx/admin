@@ -21,7 +21,8 @@ while :; do
 		die "Cgroup disappeared: $CGROUP_NAME ($CGROUP_PATH)"
 	fi
 
-	if ! echo threaded > "$CGROUP_PATH/cgroup.type"; then
+	if [[ $(< "$CGROUP_PATH/cgroup.type") != threaded ]] && \
+	   ! echo threaded > "$CGROUP_PATH/cgroup.type"; then
 		die "Cannot set cgroup type: cgroup.type = threaded"
 	fi
 

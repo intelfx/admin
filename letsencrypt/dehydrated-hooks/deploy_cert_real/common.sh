@@ -94,3 +94,23 @@ function ssh_cert_to_openwrt() {
 
 	log "$0: reloading OK"
 }
+
+function ssh_cert_to_pikvm() {
+	log "$0: pushing cert to Pi-KVM '$host'"
+
+	ssh_prep
+
+	log "$0: copying cert via sftp"
+
+	do_ssh 'rw'
+	do_sftp <<-EOF
+		put "$PRIVKEY" /etc/kvmd/nginx/ssl/server.key
+		put "$FULLCHAIN" /etc/kvmd/nginx/ssl/server.crt
+	EOF
+
+	log "$0: copying OK, now reloading"
+	do_ssh 'systemctl reload kvmd-nginx'
+	do_ssh 'ro'
+
+	log "$0: reloading OK"
+}

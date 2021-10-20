@@ -137,39 +137,6 @@ profile_performance() {
 		temp_tolerance 2000 \
 		crit_temp_tolerance 2000 \
 
-	# pwm4: chassis fan 2 (HDD exhaust)
-	# temp1 (SYSTIN): somewhere on MB
-	# temp2 (CPUTIN): still somewhere on MB, probably under the CPU
-	#nct6775_pwm_curve pwm4 \
-	#	temp_sel 1 \
-	#	floor 192 \
-	#	start 192 \
-	#	auto_point1_pwm 192 \
-	#	auto_point1_temp 40000 \
-	#	auto_point2_pwm 192 \
-	#	auto_point2_temp 45000 \
-	#	auto_point3_pwm 255 \
-	#	auto_point3_temp 50000 \
-	#	auto_point4_pwm 255 \
-	#	auto_point4_temp 60000 \
-	#	auto_point5_pwm 255 \
-	#	auto_point5_temp 80000 \
-	#	temp_tolerance 2000 \
-	#	crit_temp_tolerance 5000 \
-	#	stop_time 30000 \
-	#nct6775_pwm_manual pwm4 \
-	#	mode 1 \
-	#	_ $hddfan_quiet
-	#nct6775_pwm_maxspeed pwm4
-
-	# pwm1: chassis fan (main/top intake)
-	# pwm2: CPU fan 2 (140mm)
-	# pwm3: CPU fan 1 (120mm)
-	# pwm5: chassis fan (main/top exhaust)
-	# temp8 (SMBUSMASTER 0): CPU
-	#for pwm in pwm1 pwm2 pwm3 pwm5; do
-	#	nct6775_pwm_maxspeed $pwm
-	#done
 }
 
 profile_normal() {
@@ -211,57 +178,7 @@ profile_normal() {
 		temp_tolerance 2000 \
 		crit_temp_tolerance 2000 \
 
-	# pwm4: chassis fan 2 (HDD exhaust)
-	# temp1 (SYSTIN): somewhere on MB
-	# temp2 (CPUTIN): still somewhere on MB, probably under the CPU
-	#nct6775_pwm_curve pwm4 \
-	#	temp_sel 2 \
-	#	target_temp 45000 \
-	#	floor 128 \
-	#	start 128 \
-	#	auto_point1_pwm 160 \
-	#	auto_point1_temp 40000 \
-	#	auto_point2_pwm 192 \
-	#	auto_point2_temp 45000 \
-	#	auto_point3_pwm 255 \
-	#	auto_point3_temp 50000 \
-	#	auto_point4_pwm 255 \
-	#	auto_point4_temp 50000 \
-	#	auto_point5_pwm 255 \
-	#	auto_point5_temp 50000 \
-	#	temp_tolerance 2000 \
-	#	crit_temp_tolerance 5000 \
-	#	stop_time 30000 \
-	#nct6775_pwm_manual pwm4 \
-	#	mode 1 \
-	#	_ $hddfan_quiet
-	#nct6775_pwm_maxspeed pwm4
 
-	# pwm1: chassis fan (main/top intake)
-	# pwm2: CPU fan 2 (140mm)
-	# pwm3: CPU fan 1 (120mm)
-	# pwm5: chassis fan (main/top exhaust)
-	# temp8 (SMBUSMASTER 0): CPU
-	#for pwm in pwm1 pwm2 pwm3 pwm5; do
-	#	nct6775_pwm_curve "$pwm" \
-	#		temp_sel 8 \
-	#		target_temp 80000 \
-	#		floor 0 \
-	#		start 64 \
-	#		auto_point1_pwm 76 \
-	#		auto_point1_temp 40000 \
-	#		auto_point2_pwm 102 \
-	#		auto_point2_temp 55000 \
-	#		auto_point3_pwm 178 \
-	#		auto_point3_temp 70000 \
-	#		auto_point4_pwm 255 \
-	#		auto_point4_temp 80000 \
-	#		auto_point5_pwm 255 \
-	#		auto_point5_temp 80000 \
-	#		temp_tolerance 2000 \
-	#		crit_temp_tolerance 1000 \
-	#		stop_time 15200 \
-	#done
 }
 
 profile_quiet() {
@@ -304,58 +221,6 @@ profile_quiet() {
 		temp_tolerance 2000 \
 		crit_temp_tolerance 2000 \
 
-	# pwm4: chassis fan 2 (HDD exhaust)
-	# temp1 (SYSTIN): somewhere on MB
-	# temp2 (CPUTIN): still somewhere on MB, probably under the CPU
-	#nct6775_pwm_curve pwm4 \
-	#	temp_sel 2 \
-	#	target_temp 45000 \
-	#	floor 128 \
-	#	start 128 \
-	#	auto_point1_pwm 128 \
-	#	auto_point1_temp 40000 \
-	#	auto_point2_pwm 160 \
-	#	auto_point2_temp 50000 \
-	#	auto_point3_pwm 255 \
-	#	auto_point3_temp 55000 \
-	#	auto_point4_pwm 255 \
-	#	auto_point4_temp 55000 \
-	#	auto_point5_pwm 255 \
-	#	auto_point5_temp 55000 \
-	#	temp_tolerance 2000 \
-	#	crit_temp_tolerance 5000 \
-	#	stop_time 30000 \
-	#nct6775_pwm_manual pwm4 \
-	#	mode 1 \
-	#	_ $hddfan_quiet
-
-	# pwm1: chassis fan (main/top intake)
-	# pwm2: CPU fan 2 (140mm)
-	# pwm3: CPU fan 1 (120mm)
-	# pwm5: chassis fan (main/top exhaust)
-	# temp8 (SMBUSMASTER 0): CPU
-	#for pwm in pwm1 pwm2 pwm3 pwm5; do
-	#
-	#nct6775_pwm_curve "$pwm" \
-	#	temp_sel 8 \
-	#	target_temp 80000 \
-	#	floor 0 \
-	#	start 64 \
-	#	auto_point1_pwm 76 \
-	#	auto_point1_temp 40000 \
-	#	auto_point2_pwm 102 \
-	#	auto_point2_temp 70000 \
-	#	auto_point3_pwm 178 \
-	#	auto_point3_temp 80000 \
-	#	auto_point4_pwm 255 \
-	#	auto_point4_temp 85000 \
-	#	auto_point5_pwm 255 \
-	#	auto_point5_temp 85000 \
-	#	temp_tolerance 2000 \
-	#	crit_temp_tolerance 1000 \
-	#	stop_time 15200 \
-	#
-	#done
 }
 
 ARG_PROFILE="default"
@@ -387,6 +252,18 @@ case_silent=60
 case_quiet=75
 # 100: ~1300-1400 RPM, definitely noticeable
 case_loud=100
+
+# nct6775 binds for ASRock X570M-Pro4:
+# pwm1: chassis fan 3 (bottom left connector)
+# pwm2: CPU fan 2
+# pwm3: CPU fan 1
+# pwm4: chassis fan 1 (top connector)
+# pwm5: chassis fan 2 (bottom right connector)
+# pwm6: PCH fan
+# temp1 (SYSTIN): somewhere on MB
+# temp2 (CPUTIN): still somewhere on MB, probably under the CPU
+# temp7 (SMBUSMASTER 1): PCH
+# temp8 (SMBUSMASTER 0): CPU
 
 if (( $# > 1 )); then
 	die "Expected 0 or 1 arguments, got $#"

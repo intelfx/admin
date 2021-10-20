@@ -2,6 +2,8 @@
 
 . /etc/admin/scripts/lib/lib.sh || exit 1
 
+enable -f /usr/lib/bash/sleep sleep
+
 CGROUP_NAME="$1"
 TIMEOUT=1
 

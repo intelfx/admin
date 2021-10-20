@@ -48,7 +48,6 @@ find . \
 	-name DONTBORG.TAG \
 	-printf '%h\n' \
 	>"$targets"
-#echo "./Backups/SMB/smb-arcadia/13801F63CD94DFCF-02-02.mrimg" >"$targets"
 readarray -t targets_p <"$targets"
 
 find "${targets_p[@]}" \
@@ -153,11 +152,9 @@ for dir in "${special_macrium_p[@]}"; do
 		fi
 
 		log "$dir: $file: remote ($remote_file) is not old enough, will only transfer new incrementals"
-		#special_incrementals_p+=("$dir/$imageid-*")
 		echo "$dir/$imageid-*" >>"$special_incrementals"
 	done
 done
-#print_array "${special_incrementals_p[@]}" >"$special_incrementals"
 
 fi
 
@@ -196,8 +193,6 @@ do_rsync_with_filters \
 	--exclude='*' \
 	"$@"
 
-	#--files-from="$targets" \
-	#--files-from="$inclusions" \
 do_rsync_with_filters \
 	--files-from=<(cat "$targets" "$inclusions") \
 	--exclude-from="$exclusions" \

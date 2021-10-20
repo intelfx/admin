@@ -3,7 +3,8 @@
 set -eo pipefail
 shopt -s lastpipe
 
-. lib.sh || exit 1
+cd "${BASH_SOURCE%/*}"
+. lib/lib.sh || exit 1
 
 all_parents() {
 	local d

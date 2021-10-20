@@ -113,7 +113,7 @@ profile_performance() {
 
 	# Commander fan4, fan6: right chamber fan (HDD intake, exhaust)
 	for fan in fan4 fan6; do
-		liquidctl -m 'Commander Pro' set $fan speed $case_quiet
+		liquidctl -m 'Commander Pro' set $fan speed $case_loud
 	done
 
 	# pwm6: PCH fan

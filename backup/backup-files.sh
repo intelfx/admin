@@ -40,7 +40,6 @@ done
 
 # rsync does not have any facilities to filter by "tag files" (CACHEDIR.TAG),
 # sunrise by hand
-targets="$(mktemp)"
 inclusions="$(mktemp)"
 exclusions="$(mktemp)"
 all="$(mktemp)"
@@ -51,20 +50,14 @@ special_borg="$(mktemp)"
 special_incrementals="$(mktemp)"
 
 cleanup() {
-	rm -f "$all" "$targets" "$inclusions" "$exclusions" "$special_macrium" "$special_borg" "$special_incrementals"
+	rm -f "$all" "$inclusions" "$exclusions" "$special_macrium" "$special_borg" "$special_incrementals"
 }
 trap cleanup TERM HUP INT EXIT
 
 # easiest this way, the rest of the script hardcodes "."
 cd "$LOCAL_PATH"
 
-# NOTE: -prune doesn't work, don't include nested DONTBORG.TAG!
-find . \
-	-type f \
-	-name DONTBORG.TAG \
-	-printf '%h\n' \
-	>"$targets"
-readarray -t targets_p <"$targets"
+targets_p=(.)
 
 find "${targets_p[@]}" \
 	-type f \
@@ -102,7 +95,7 @@ find "${targets_p[@]}" \
 #	>"$targets"
 
 echo "TARGETS:"
-cat $targets; echo
+print_array ${targets_p[@]}; echo
 
 echo "EXCLUSIONS:"
 cat $exclusions; echo
@@ -259,11 +252,12 @@ fi
 # specify all patterns with a leading / because that's how you anchor rsync patterns to the root of the transfer.
 sed -r 's|^\./|/|' \
 	-i "$exclusions" \
+	-i "$inclusions" \
 	-i "$special_incrementals" \
 
 do_rsync_with_filters \
-	--files-from=<(cat "$targets" "$inclusions") \
 	--exclude-from="$exclusions" \
+	--include-from="$inclusions" \
 	--exclude-from="$special_incrementals" \
 	"${ARGS[@]}"
 

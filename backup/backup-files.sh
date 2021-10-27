@@ -78,7 +78,7 @@ find "${targets_p[@]}" \
 	-type f \
 	-name '*.mrimg' \
 	-printf '%h\n' \
-	| uniq \
+	| sort -u \
 	>"$special_macrium"
 
 # some less-than-superficial checks whether $1 is a borg repository

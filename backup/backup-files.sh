@@ -172,7 +172,7 @@ do_rsync_with_filters() {
 		--delete-after \
 		"$@" \
 		./ \
-		/mnt/b2/files/
+		"$REMOTE_PATH"
 }
 
 # specify all paths with a leading / because that's how you anchor rsync patterns to the root of the transfer.

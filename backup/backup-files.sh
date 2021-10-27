@@ -116,7 +116,8 @@ cat $special_borg; echo
 readarray -t special_borg_p <"$special_borg"
 for dir in "${special_borg_p[@]}"; do
 	log "$dir: looks like a borg repository${BORG_COMPACT:+", trying to compact"}"
-	if ! borg with-lock --lock-wait=0 "$dir" -- true; then
+	#if ! borg with-lock --lock-wait=0 "$dir" -- true; then
+	if [[ -e "$dir/lock.exclusive" ]]; then
 		log "$dir: Borg repository is busy, skipping and scheduling a rerun"
 		echo "$dir" >>"$exclusions"
 		NEED_RERUN=1
@@ -132,7 +133,7 @@ for dir in "${special_borg_p[@]}"; do
 		continue
 	fi
 	borg compact --verbose --progress "$dir" || die "$dir: failed to compact"
-	(cd "$dir" && touch "x_last_compact")
+	touch "$dir/x_last_compact"
 done
 
 #

@@ -165,13 +165,13 @@ for dir in "${special_macrium_p[@]}"; do
 		continue
 	fi
 
-	find "$dir" -type f -name '*-00-00.mrimg' -printf '%f\n' | readarray -t macrium_fulls
+	find "$dir" -maxdepth 1 -type f -name '*-00-00.mrimg' -printf '%f\n' | readarray -t macrium_fulls
 	for file in "${macrium_fulls[@]}"; do
 		imageid="${file%-00-00.mrimg}"
 		log "$dir: found backup set: $imageid ($file)"
 
 		# find oldest local incremental
-		find "$dir" -type f -name "$imageid-*.mrimg" -not -name "$imageid-00-00.mrimg" -printf '%f\t%T@\n' \
+		find "$dir" -maxdepth 1 -type f -name "$imageid-*.mrimg" -not -name "$imageid-00-00.mrimg" -printf '%f\t%T@\n' \
 			| sort -t $'\t' -k2 -n -r \
 			| tail -n1 \
 			| read local_file local_mtime \
@@ -179,7 +179,7 @@ for dir in "${special_macrium_p[@]}"; do
 		# find oldest remote incremental
 		# $dir is .-based, should be safe
 		# ignore partially transfered files with mtime 0
-		find "$REMOTE_PATH/${dir#./}" -type f -name "$imageid-*.mrimg" -not -name "$imageid-00-00.mrimg" -and -newermt '@1' -printf '%f\t%T@\n' \
+		find "$REMOTE_PATH/${dir#./}" -maxdepth 1 -type f -name "$imageid-*.mrimg" -not -name "$imageid-00-00.mrimg" -and -newermt '@1' -printf '%f\t%T@\n' \
 			| sort -t $'\t' -k2 -n -r \
 			| tail -n1 \
 			| read remote_file remote_mtime \

@@ -18,10 +18,28 @@ all_parents() {
 
 LOCAL_PATH=/mnt/data
 REMOTE_PATH=/mnt/b2/files
-PROCESS_BORG=1
-PROCESS_MACRIUM=1
 
 NEED_RERUN=0
+
+MACRIUM_INCREMENTAL=1
+BORG_COMPACT=1
+ARGS=()
+
+for arg; do
+	case "$arg" in
+	-Xno-incremental)
+		MACRIUM_INCREMENTAL=
+		log "Disabling incremental upload of Macrium Reflect backups"
+		;;
+	-Xno-compact)
+		BORG_COMPACT=
+		log "Disabling automatic compaction of Borg repositories"
+		;;
+	*)
+		ARGS+=( "$arg" )
+		;;
+	esac
+done
 
 # rsync does not have any facilities to filter by "tag files" (CACHEDIR.TAG),
 # sunrise by hand
@@ -106,21 +124,21 @@ cat $special_borg; echo
 # Borg special handling: compact (conservatively) before uploading
 #
 
-if (( PROCESS_BORG )); then
-
 readarray -t special_borg_p <"$special_borg"
 for dir in "${special_borg_p[@]}"; do
-	log "$dir: looks like a borg repository, trying to compact"
+	log "$dir: looks like a borg repository${BORG_COMPACT:+", trying to compact"}"
 	if ! borg with-lock --lock-wait=0 "$dir" -- true; then
 		log "$dir: Borg repository is busy, skipping and scheduling a rerun"
 		echo "$dir" >>"$exclusions"
 		NEED_RERUN=1
 		continue
 	fi
+
+	if ! (( BORG_COMPACT )); then
+		continue
+	fi
 	borg compact --threshold=50 --verbose --progress "$dir" || die "$dir: failed to compact"
 done
-
-fi
 
 #
 # Macrium special handling: constantly overwriting synthetic fulls is wasteful.
@@ -131,16 +149,18 @@ fi
 # NOTE: expecting that fulls are named '{IMAGEID}-00-00.mrimg'
 #
 
-if (( PROCESS_MACRIUM )); then
-
 readarray -t special_macrium_p <"$special_macrium"
 for dir in "${special_macrium_p[@]}"; do
-	log "$dir: looks like a Macrium Reflect backup destination, locating backup sets"
+	log "$dir: looks like a Macrium Reflect backup destination${MACRIUM_INCREMENTAL:+", analyzing backup sets"}"
 
 	if [[ -e "$dir/backup_running" || -e "$dir/merge_running" ]]; then
 		log "$dir: Macrium Reflect directory is busy, skipping and scheduling a rerun"
 		echo "$dir" >>"$exclusions"
 		NEED_RERUN=1
+		continue
+	fi
+
+	if ! (( MACRIUM_INCREMENTAL )); then
 		continue
 	fi
 
@@ -171,10 +191,12 @@ for dir in "${special_macrium_p[@]}"; do
 	done
 done
 
-fi
+if (( MACRIUM_INCREMENTAL )); then
 
 echo "MACRIUM INCREMENTAL-ONLY SETS:"
 cat "$special_incrementals"; echo
+
+fi
 
 # this will backup "." by default!
 # intended to be used with filters (--files-from, --exclude-from)
@@ -197,6 +219,8 @@ sed -r 's|^\./|/|' \
 	-i "$exclusions" \
 	-i "$special_incrementals" \
 
+if (( MACRIUM_INCREMENTAL )); then
+
 # poor man's wildcard-aware --files-from
 # compute all parent directories for --include-from
 readarray -t dirs <"$special_incrementals"
@@ -206,13 +230,15 @@ do_rsync_with_filters \
 	--include-from="$special_incrementals_l" \
 	--exclude='/' \
 	--exclude='*' \
-	"$@"
+	"${ARGS[@]}"
+
+fi
 
 do_rsync_with_filters \
 	--files-from=<(cat "$targets" "$inclusions") \
 	--exclude-from="$exclusions" \
 	--exclude-from="$special_incrementals" \
-	"$@"
+	"${ARGS[@]}"
 
 if (( NEED_RERUN )); then
 	log "Some directories were skipped -- restarting in a minute"

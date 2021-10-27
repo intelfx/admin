@@ -21,6 +21,7 @@ REMOTE_PATH=/mnt/b2/files
 
 NEED_RERUN=0
 
+MACRIUM_FORCE_INCREMENTAL=
 MACRIUM_INCREMENTAL=1
 BORG_COMPACT=1
 ARGS=()
@@ -29,7 +30,13 @@ for arg; do
 	case "$arg" in
 	-Xno-incremental)
 		MACRIUM_INCREMENTAL=
+		MACRIUM_FORCE_INCREMENTAL=
 		log "Disabling incremental upload of Macrium Reflect backups"
+		;;
+	-Xincremental)
+		MACRIUM_INCREMENTAL=1
+		MACRIUM_FORCE_INCREMENTAL=1
+		log "Forcing incremental upload of Macrium Reflect backups"
 		;;
 	-Xno-compact)
 		BORG_COMPACT=
@@ -161,6 +168,12 @@ for dir in "${special_macrium_p[@]}"; do
 	fi
 
 	if ! (( MACRIUM_INCREMENTAL )); then
+		continue
+	fi
+
+	if (( MACRIUM_FORCE_INCREMENTAL )); then
+		log "$dir: forced, will only transfer new incrementals"
+		echo "$dir/*" >>"$special_incrementals"
 		continue
 	fi
 

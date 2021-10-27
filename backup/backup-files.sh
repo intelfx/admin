@@ -6,16 +6,6 @@ shopt -s lastpipe
 cd "${BASH_SOURCE%/*}"
 . lib/lib.sh || exit 1
 
-all_parents() {
-	local d
-	for d; do
-		while [[ $d && $d != '.' && $d != '/' ]]; do
-			echo "$d"
-			d="${d%/*}"
-		done
-	done
-}
-
 LOCAL_PATH=/mnt/data
 REMOTE_PATH=/mnt/b2/files
 
@@ -59,10 +49,9 @@ all="$(mktemp)"
 special_macrium="$(mktemp)"
 special_borg="$(mktemp)"
 special_incrementals="$(mktemp)"
-special_incrementals_l="$(mktemp)"
 
 cleanup() {
-	rm -f "$all" "$targets" "$inclusions" "$exclusions" "$special_macrium" "$special_borg" "$special_incrementals" "$special_incrementals_l"
+	rm -f "$all" "$targets" "$inclusions" "$exclusions" "$special_macrium" "$special_borg" "$special_incrementals"
 }
 trap cleanup TERM HUP INT EXIT
 
@@ -242,25 +231,28 @@ do_rsync_with_filters() {
 		"$REMOTE_PATH"
 }
 
+if (( MACRIUM_INCREMENTAL )); then
+
+# poor man's wildcard-aware --files-from, take 2
+expand_files_from() {
+	local files_from="$1" p
+	while read p; do
+		local dir="$(dirname "$p")" base="$(basename "$p")"
+		find "$dir" -type f -path "$dir/$base"
+	done <"$files_from"
+}
+
+do_rsync_with_filters \
+	--ignore-existing \
+	--files-from=<(expand_files_from "$special_incrementals") \
+	"${ARGS[@]}"
+
+fi
+
 # specify all patterns with a leading / because that's how you anchor rsync patterns to the root of the transfer.
 sed -r 's|^\./|/|' \
 	-i "$exclusions" \
 	-i "$special_incrementals" \
-
-if (( MACRIUM_INCREMENTAL )); then
-
-# poor man's wildcard-aware --files-from
-# compute all parent directories for --include-from
-readarray -t dirs <"$special_incrementals"
-all_parents "${dirs[@]}" >"$special_incrementals_l"
-do_rsync_with_filters \
-	--ignore-existing \
-	--include-from="$special_incrementals_l" \
-	--exclude='/' \
-	--exclude='*' \
-	"${ARGS[@]}"
-
-fi
 
 do_rsync_with_filters \
 	--files-from=<(cat "$targets" "$inclusions") \

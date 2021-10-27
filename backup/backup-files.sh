@@ -186,23 +186,34 @@ for dir in "${special_macrium_p[@]}"; do
 	find "$dir" -type f -name '*-00-00.mrimg' -printf '%f\n' | readarray -t macrium_fulls
 	for file in "${macrium_fulls[@]}"; do
 		imageid="${file%-00-00.mrimg}"
-		#log "$dir: $file: looks like a Macrium backup set ($imageid), processing"
+		log "$dir: found backup set: $imageid ($file)"
 
-		local_file="$dir/$file"
-		remote_file="$REMOTE_PATH/${dir#./}/$file"  # $dir is .-based, should be safe
-		if ! [[ -e "$remote_file" ]]; then
-			log "$dir: $file: remote ($remote_file) does not exist"
-			continue
-		fi
-		local_mtime="$(stat -c '%Y' "$local_file")"
-		remote_mtime="$(stat -c '%Y' "$remote_file")"
+		# find oldest local incremental
+		find "$dir" -type f -name "$imageid-*.mrimg" -not -name "$imageid-00-00.mrimg" -printf '%f\t%T@\n' \
+			| sort -t $'\t' -k2 -n -r \
+			| tail -n1 \
+			| read local_file local_mtime \
+			|| continue
+		# find oldest remote incremental
+		# $dir is .-based, should be safe
+		# ignore partially transfered files with mtime 0
+		find "$REMOTE_PATH/${dir#./}" -type f -name "$imageid-*.mrimg" -not -name "$imageid-00-00.mrimg" -and -newermt '@1' -printf '%f\t%T@\n' \
+			| sort -t $'\t' -k2 -n -r \
+			| tail -n1 \
+			| read remote_file remote_mtime \
+			|| continue
+
+		# strip decimal part
+		local_mtime="${local_mtime%.*}"
+		remote_mtime="${remote_mtime%.*}"
+
+		log "$dir: remote: $remote_file @ $(date -d "@$remote_mtime")"
+		log "$dir:  local: $local_file @ $(date -d "@$local_mtime")"
 
 		week="$(( 7 * 24 * 3600 ))"
 		if (( local_mtime >= remote_mtime + week )); then
-			# FIXME
-			#log "$dir: $file: remote ($remote_file) older than local by 1 week or more, will transfer in full"
-			#continue
-			log "$dir: $file: remote ($remote_file) older than local by 1 week or more, but ignoring this"
+			log "$dir: $imageid: remote ($remote_file) older than local ($local_file) by 1 week or more, will transfer in full"
+			continue
 		fi
 
 		log "$dir: $file: remote ($remote_file) is not old enough, will only transfer new incrementals"

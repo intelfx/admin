@@ -217,6 +217,11 @@ cat "$special_incrementals"; echo
 
 fi
 
+TIMESTAMP="$(date +%s)"
+RSYNC_TMP="$REMOTE_PATH/.rsync-tmp"
+RSYNC_PARTIAL=".rsync-partial-$TIMESTAMP"
+mkdir -pv "$RSYNC_TMP"
+
 # this will backup "." by default!
 # intended to be used with filters (--files-from, --exclude-from)
 do_rsync_with_filters() {
@@ -224,7 +229,9 @@ do_rsync_with_filters() {
 		-arAX --fake-super \
 		--info=progress2 \
 		--human-readable \
-		--partial \
+		--partial-dir="$RSYNC_PARTIAL" \
+		--temp-dir="$RSYNC_TMP" \
+		--delay-updates \
 		--delete-after \
 		"$@" \
 		./ \

@@ -182,7 +182,7 @@ hugepages_setup() {
 			continue
 		fi
 
-		log "hugepages($huge): allocating (try $i): success: have $huge_free_actual, need $huge_count"
+		log "hugepages($huge): allocating (try $i): success: have $huge_avail_actual, need $huge_count"
 		fail=0
 		break
 	done

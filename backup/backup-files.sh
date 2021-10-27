@@ -138,7 +138,7 @@ for dir in "${special_borg_p[@]}"; do
 		log "$dir: Borg repository was compacted less than 1 week ago, skipping"
 		continue
 	fi
-	borg compact --threshold=50 --verbose --progress "$dir" || die "$dir: failed to compact"
+	borg compact --verbose --progress "$dir" || die "$dir: failed to compact"
 	(cd "$dir" && touch "x_last_compact")
 done
 

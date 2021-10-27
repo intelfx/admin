@@ -144,7 +144,13 @@ for dir in "${special_borg_p[@]}"; do
 	if ! (( BORG_COMPACT )); then
 		continue
 	fi
+
+	if find "$dir" -maxdepth 1 -mindepth 1 -type f -name "x_last_compact" -newermt '1 week ago' | grep -q .; then
+		log "$dir: Borg repository was compacted less than 1 week ago, skipping"
+		continue
+	fi
 	borg compact --threshold=50 --verbose --progress "$dir" || die "$dir: failed to compact"
+	(cd "$dir" && touch "x_last_compact")
 done
 
 #

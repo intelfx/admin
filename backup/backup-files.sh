@@ -21,6 +21,8 @@ REMOTE_PATH=/mnt/b2/files
 PROCESS_BORG=1
 PROCESS_MACRIUM=1
 
+NEED_RERUN=0
+
 # rsync does not have any facilities to filter by "tag files" (CACHEDIR.TAG),
 # sunrise by hand
 targets="$(mktemp)"
@@ -109,7 +111,13 @@ if (( PROCESS_BORG )); then
 readarray -t special_borg_p <"$special_borg"
 for dir in "${special_borg_p[@]}"; do
 	log "$dir: looks like a borg repository, trying to compact"
-	borg compact --threshold=50 --verbose --progress "$dir" || err "$dir: failed to compact, ignoring"
+	if ! borg with-lock --lock-wait=0 "$dir" -- true; then
+		log "$dir: Borg repository is busy, skipping and scheduling a rerun"
+		echo "$dir" >>"$exclusions"
+		NEED_RERUN=1
+		continue
+	fi
+	borg compact --threshold=50 --verbose --progress "$dir" || die "$dir: failed to compact"
 done
 
 fi
@@ -128,6 +136,13 @@ if (( PROCESS_MACRIUM )); then
 readarray -t special_macrium_p <"$special_macrium"
 for dir in "${special_macrium_p[@]}"; do
 	log "$dir: looks like a Macrium Reflect backup destination, locating backup sets"
+
+	if [[ -e "$dir/backup_running" || -e "$dir/merge_running" ]]; then
+		log "$dir: Macrium Reflect directory is busy, skipping and scheduling a rerun"
+		echo "$dir" >>"$exclusions"
+		NEED_RERUN=1
+		continue
+	fi
 
 	find "$dir" -type f -name '*-00-00.mrimg' -printf '%f\n' | readarray -t macrium_fulls
 	for file in "${macrium_fulls[@]}"; do
@@ -198,3 +213,9 @@ do_rsync_with_filters \
 	--exclude-from="$exclusions" \
 	--exclude-from="$special_incrementals" \
 	"$@"
+
+if (( NEED_RERUN )); then
+	log "Some directories were skipped -- restarting in a minute"
+	sleep 60
+	exec "$0" "$@"
+fi

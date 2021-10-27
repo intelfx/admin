@@ -242,10 +242,8 @@ do_rsync_with_filters() {
 		"$REMOTE_PATH"
 }
 
-# specify all paths with a leading / because that's how you anchor rsync patterns to the root of the transfer.
+# specify all patterns with a leading / because that's how you anchor rsync patterns to the root of the transfer.
 sed -r 's|^\./|/|' \
-	-i "$targets" \
-	-i "$inclusions" \
 	-i "$exclusions" \
 	-i "$special_incrementals" \
 

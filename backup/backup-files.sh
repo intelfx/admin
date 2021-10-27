@@ -156,6 +156,12 @@ for dir in "${special_macrium_p[@]}"; do
 		continue
 	fi
 
+	# check if this directory even exists on remote
+	# $dir is .-based, should be safe
+	if ! [[ -d "$REMOTE_PATH/${dir#./}" ]]; then
+		continue
+	fi
+
 	if ! (( MACRIUM_INCREMENTAL )); then
 		continue
 	fi

@@ -139,6 +139,48 @@ profile_performance() {
 
 }
 
+profile_semiperf() {
+	# H100i: CPU exhaust
+	liquidctl -m 'H100i' set fan speed \
+		20 $h100i_quiet \
+		31 $h100i_quiet \
+		32 $h100i_loud \
+		36 $h100i_loud \
+		40 100
+
+	# Commander fan1, fan2: left chamber fan (CPU/GPU top intake, CPU/GPU bottom intake)
+	for fan in fan1 fan2; do
+		liquidctl -m 'Commander Pro' set $fan speed $case_loud
+	done
+
+	# Commander fan4, fan6: right chamber fan (HDD intake, exhaust)
+	for fan in fan4 fan6; do
+		liquidctl -m 'Commander Pro' set $fan speed $case_loud
+	done
+
+	# pwm6: PCH fan
+	# temp7 (SMBUSMASTER 1): PCH
+	nct6775_pwm_curve pwm6 \
+		temp_sel 7 \
+		target_temp 70000 \
+		floor $pchfan_floor \
+		start $pchfan_silent \
+		auto_point1_pwm $pchfan_silent \
+		auto_point1_temp 50000 \
+		auto_point2_pwm $pchfan_quiet \
+		auto_point2_temp 60000 \
+		auto_point3_pwm $pchfan_quiet \
+		auto_point3_temp 70000 \
+		auto_point4_pwm $pchfan_loud \
+		auto_point4_temp 75000 \
+		auto_point5_pwm 255 \
+		auto_point5_temp 80000 \
+		stop_time 15200 \
+		temp_tolerance 2000 \
+		crit_temp_tolerance 2000 \
+
+}
+
 profile_normal() {
 	liquidctl -m 'H100i' set fan speed \
 		20 $h100i_quiet \
@@ -321,6 +363,8 @@ min|quiet|silent)
 	PROFILE=quiet ;;
 semisilent|semiquiet|semi)
 	PROFILE=semiquiet ;;
+semiperf|active)
+	PROFILE=semiperf ;;
 *)
 	die "Unknown profile: '$ARG_PROFILE'"
 esac

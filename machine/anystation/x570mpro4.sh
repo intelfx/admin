@@ -336,11 +336,14 @@ profile_auto() {
 		power="$(<"$liquidctl_json" jq -r '.[] | select(.description == "Corsair HX1000i") | .status[] | select(.key == "Total power output") | .value')"
 		cpu_fan="$(<"$liquidctl_json" jq -r '.[] | select(.description == "Corsair Hydro H100i Pro XT") | .status | map(select(.key | match("Fan [0-9]+ duty"))) | map(.value) | max')"
 
-		log "auto[state=$STATE]: $(date): power=${power}W, cpu_fan=${cpu_fan}%"
+		grep drivetemp /sys/class/hwmon/hwmon*/name | xargs -n1 dirname | xargs -I{} cat "{}/temp1_input" | readarray -t drivetemps
+		drivetemp=$(( $(max "${drivetemps[@]}") / 1000 ))
+
+		log "auto[state=$STATE]: $(date): power=${power}W, cpu_fan=${cpu_fan}%, drivetemp=${drivetemp}°C"
 
 		case "$STATE" in
 		normal)
-			if (( cpu_fan >= 60 )); then
+			if (( cpu_fan >= 60 )) || (( drivetemp > 45 )); then
 				auto_set_profile "semiperf"
 			else
 				auto_set_profile "normal"

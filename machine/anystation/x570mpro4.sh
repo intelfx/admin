@@ -89,12 +89,10 @@ nct6775_pwm_curve() {
 }
 
 initialize() {
-	if [[ -e /run/x570mpro4 ]]; then return; fi
 	liquidctl -m 'Commander Pro' initialize || true
 	liquidctl -m 'HX1000i' initialize --single-12v-ocp || true
 	liquidctl -m 'HX1000i' set fan speed 30 || true
 	liquidctl -m 'H100i' initialize --pump-mode balanced || true
-	touch /run/x570mpro4
 }
 
 profile_performance() {
@@ -306,7 +304,70 @@ profile_quiet() {
 
 }
 
-ARG_PROFILE="default"
+profile_auto() {
+	eval "$(ltraps)"
+	liquidctl_json="$(mktemp)"
+	ltrap 'rm -f "$liquidctl_json"'
+
+	local STATE=none
+	local PROFILE=none
+	auto_set_state() {
+		log "auto[state=$STATE]: switching state: $STATE -> $1"
+		STATE="$1"
+	}
+	auto_set_profile() {
+		if [[ "$1" != "$PROFILE" ]]; then
+			log "auto[state=$STATE]: switching profile: $PROFILE -> $1"
+			if "$0" --auto "$1"; then
+				PROFILE="$1"
+			else
+				err "auto[state=$STATE]: failed to set profile: $1"
+			fi
+		fi
+	}
+
+	while :; do
+		if ! liquidctl status --json >"$liquidctl_json"; then
+			err "Failed to query liquidctl, continuing"
+			sleep 1
+			continue
+		fi
+
+		power="$(<"$liquidctl_json" jq -r '.[] | select(.description == "Corsair HX1000i") | .status[] | select(.key == "Total power output") | .value')"
+		cpu_fan="$(<"$liquidctl_json" jq -r '.[] | select(.description == "Corsair Hydro H100i Pro XT") | .status | map(select(.key | match("Fan [0-9]+ duty"))) | map(.value) | max')"
+
+		log "auto[state=$STATE]: $(date): power=${power}W, cpu_fan=${cpu_fan}%"
+
+		case "$STATE" in
+		normal)
+			if (( cpu_fan >= 60 )); then
+				auto_set_profile "semiperf"
+			else
+				auto_set_profile "normal"
+			fi
+
+			if (( power >= 350 )); then
+				auto_set_state "loaded"
+				continue
+			fi
+			;;
+
+		loaded)
+			auto_set_profile "semiperf"
+
+			if (( power < 200 )) && (( cpu_fan <= 50 )); then
+				auto_set_state "normal"
+				continue
+			fi
+			;;
+		*)
+			auto_set_state "normal"
+			continue
+			;;
+		esac
+		sleep 10
+	done
+}
 
 # 192: ~1000 RPM, almost unnoticeable if HDDs are active
 hddfan_quiet=192
@@ -348,13 +409,29 @@ case_loud=100
 # temp7 (SMBUSMASTER 1): PCH
 # temp8 (SMBUSMASTER 0): CPU
 
+ARG_PROFILE="default"
+ARG_NO_INITIALIZE=
+ARG_FORCE_INITIALIZE=
+
+declare -A PARSE_ARGS
+PARSE_ARGS=(
+	[--auto]="ARG_NO_INITIALIZE"
+	[--init]="ARG_FORCE_INITIALIZE"
+	[-i]="ARG_FORCE_INITIALIZE"
+	[--]="ARGS"
+)
+parse_args PARSE_ARGS "$@"
+set -- "${ARGS[@]}"
+
 if (( $# > 1 )); then
-	die "Expected 0 or 1 arguments, got $#"
+	die "Expected 0 or 1 positional arguments, got $#"
 elif (( $# == 1 )); then
 	ARG_PROFILE="$1"
 fi
 
 case "$ARG_PROFILE" in
+auto)
+	PROFILE=auto ;;
 normal|default)
 	PROFILE=normal ;;
 max|perf|performance)
@@ -369,6 +446,15 @@ semiperf|active)
 	die "Unknown profile: '$ARG_PROFILE'"
 esac
 
+if (( ARG_FORCE_INITIALIZE )); then
+	log "Forcibly re-initializing devices"
+	initialize
+	touch /run/x570mpro4
+elif ! (( ARG_SKIP_INITIALIZE )) && ! [[ -e /run/x570mpro4 ]]; then
+	log "Initializing devices"
+	initialize
+	touch /run/x570mpro4
+fi
+
 log "Using profile: '$ARG_PROFILE'"
-initialize
 "profile_$PROFILE"

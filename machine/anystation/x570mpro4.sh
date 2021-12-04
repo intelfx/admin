@@ -185,7 +185,7 @@ profile_normal() {
 	liquidctl -m 'H100i' set fan speed \
 		20 $h100i_quiet \
 		25 $h100i_quiet \
-		28 $h100i_quiet \
+		31 $h100i_quiet \
 		36 $h100i_loud \
 		40 100
 

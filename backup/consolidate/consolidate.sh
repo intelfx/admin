@@ -12,13 +12,21 @@ if (( $# != 2 )); then
 fi
 
 unix_to_wine() {
-	realpath --canonicalize-missing --strip "$1" | sed -r 's|^/|Z:\\|; s|/|\\|g'
+	realpath --strip "$1" | sed -r 's|^/|Z:\\|; s|/|\\|g'
 }
+
+if ! [[ -e "$1" ]]; then
+	die "Target does not exist: $1"
+fi
+
+if ! [[ -e "$2" ]]; then
+	die "Source does not exist: $2"
+fi
 
 ARG1="$(unix_to_wine "$1")"
 ARG2="$(unix_to_wine "$2")"
 CONSOLIDATE_LOG="$(unix_to_wine consolidate.log)"
-WINE_LOG="$(realpath --canonicalize-missing --strip "wine.log")"
+WINE_LOG="$(realpath --strip wine.log)"
 
 rm -f consolidate.log wine.log
 touch consolidate.log

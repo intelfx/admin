@@ -66,7 +66,7 @@ find "${targets_p[@]}" \
 	>"$exclusions"
 readarray -t exclusions_p <"$exclusions"
 
-find "${exclusions_p[@]}" \
+maybe_find "${exclusions_p[@]}" \
 	-type f \
 	-name BACKUP.TAG \
 	-printf '%h\n' \
@@ -89,10 +89,6 @@ find "${targets_p[@]}" \
 	-execdir grep -q -Fx '[repository]' {} \; \
 	-printf '%h\n' \
 	>"$special_borg"
-
-#printf '%s\n' \
-#	"./Backups/SMB/smb-arcadia/test/" \
-#	>"$targets"
 
 echo "TARGETS:"
 print_array ${targets_p[@]}; echo

@@ -28,6 +28,9 @@ ARG2="$(unix_to_wine "$2")"
 CONSOLIDATE_LOG="$(unix_to_wine consolidate.log)"
 WINE_LOG="$(realpath --strip wine.log)"
 
+ARG1_PATH="$(realpath --strip "$1")"
+ARG2_MTIME="$(stat -c '%.Y' "$2")"
+
 rm -f consolidate.log wine.log
 touch consolidate.log
 tail --follow consolidate.log >&2 &
@@ -52,3 +55,6 @@ CMDLINE=(
 
 log "Starting: ${CMDLINE[@]}"
 startx "${CMDLINE[@]}" -- /usr/bin/Xvnc :9 &>"$WINE_LOG"
+
+log "Resetting target mtime"
+touch -d "@$ARG2_MTIME" "$ARG1_PATH"

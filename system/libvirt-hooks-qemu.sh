@@ -224,6 +224,7 @@ hugepages_teardown() {
 
 	log "hugepages($huge): releasing $huge_count"
 
+	local huge_nr_actual="$(< /sys/kernel/mm/hugepages/$huge/nr_hugepages)"
 	local huge_nr_orig="$(( huge_nr_actual - huge_count ))"
 	hugepages_rollback
 

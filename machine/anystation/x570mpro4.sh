@@ -95,7 +95,7 @@ initialize() {
 	liquidctl -m 'H100i' initialize --pump-mode balanced || true
 }
 
-profile_performance() {
+profile_max() {
 	# H100i: CPU exhaust
 	liquidctl -m 'H100i' set fan speed \
 		20 $h100i_quiet \
@@ -137,14 +137,14 @@ profile_performance() {
 
 }
 
-profile_semiperf() {
+profile_active() {
 	# H100i: CPU exhaust
 	liquidctl -m 'H100i' set fan speed \
 		20 $h100i_quiet \
 		31 $h100i_quiet \
 		32 $h100i_loud \
-		36 $h100i_loud \
-		40 100
+		40 $h100i_loud \
+		41 100
 
 	# Commander fan1, fan2: left chamber fan (CPU/GPU top intake, CPU/GPU bottom intake)
 	for fan in fan1 fan2; do
@@ -183,7 +183,7 @@ profile_normal() {
 	liquidctl -m 'H100i' set fan speed \
 		20 $h100i_quiet \
 		25 $h100i_quiet \
-		31 $h100i_quiet \
+		32 $h100i_quiet \
 		36 $h100i_loud \
 		40 100
 
@@ -220,12 +220,53 @@ profile_normal() {
 
 }
 
-profile_semiquiet() {
+profile_normal_hi() {
+	liquidctl -m 'H100i' set fan speed \
+		20 $h100i_quiet \
+		25 $h100i_quiet \
+		31 $h100i_quiet \
+		36 $h100i_loud \
+		40 100
+
+	# Commander fan1, fan2: left chamber fan (CPU/GPU top intake, CPU/GPU bottom intake)
+	for fan in fan1 fan2; do
+		liquidctl -m 'Commander Pro' set $fan speed $case_loud
+	done
+
+	# Commander fan4, fan6: right chamber fan (HDD intake, exhaust)
+	for fan in fan4 fan6; do
+		liquidctl -m 'Commander Pro' set $fan speed $case_loud
+	done
+
+	# pwm6: PCH fan
+	# temp7 (SMBUSMASTER 1): PCH
+	nct6775_pwm_curve pwm6 \
+		temp_sel 7 \
+		target_temp 70000 \
+		floor $pchfan_floor \
+		start $pchfan_silent \
+		auto_point1_pwm $pchfan_silent \
+		auto_point1_temp 50000 \
+		auto_point2_pwm $pchfan_silent \
+		auto_point2_temp 60000 \
+		auto_point3_pwm $pchfan_quiet \
+		auto_point3_temp 70000 \
+		auto_point4_pwm $pchfan_quiet \
+		auto_point4_temp 75000 \
+		auto_point5_pwm 255 \
+		auto_point5_temp 80000 \
+		stop_time 15200 \
+		temp_tolerance 2000 \
+		crit_temp_tolerance 2000 \
+
+}
+
+profile_passive() {
 	liquidctl -m 'H100i' set fan speed \
 		20 $h100i_silent \
 		25 $h100i_quiet \
-		30 $h100i_quiet \
-		36 $h100i_quiet \
+		34 $h100i_quiet \
+		39 $h100i_loud \
 		40 100
 
 	# Commander fan1, fan2: left chamber fan (CPU/GPU top intake, CPU/GPU bottom intake)
@@ -262,7 +303,7 @@ profile_semiquiet() {
 
 }
 
-profile_quiet() {
+profile_min() {
 	liquidctl -m 'H100i' set fan speed \
 		20 $h100i_silent \
 		25 $h100i_quiet \
@@ -311,63 +352,121 @@ profile_auto() {
 
 	local STATE=none
 	local PROFILE=none
+	local PROFILE_NEW=none
 	auto_set_state() {
 		log "auto[state=$STATE]: switching state: $STATE -> $1"
 		STATE="$1"
 	}
 	auto_set_profile() {
-		if [[ "$1" != "$PROFILE" ]]; then
-			log "auto[state=$STATE]: switching profile: $PROFILE -> $1"
-			if "$0" --auto "$1"; then
-				PROFILE="$1"
+		PROFILE_NEW="$1"
+	}
+	auto_set_profile_commit() {
+		if [[ "$PROFILE_NEW" != "$PROFILE" ]]; then
+			log "auto[state=$STATE]: switching profile: $PROFILE -> $PROFILE_NEW"
+			if "$0" --auto "$PROFILE_NEW"; then
+				PROFILE="$PROFILE_NEW"
 			else
-				err "auto[state=$STATE]: failed to set profile: $1"
+				err "auto[state=$STATE]: failed to set profile: $PROFILE_NEW"
 			fi
 		fi
+	}
+
+	bc_scale() {
+		local exp="$1"
+		local scale="$2"
+
+		bc <<< "x=($exp); $scale; x/1"
 	}
 
 	while :; do
 		if ! liquidctl status --json >"$liquidctl_json"; then
 			err "Failed to query liquidctl, continuing"
-			sleep 1
+			sleep 0.5
 			continue
 		fi
 
-		power="$(<"$liquidctl_json" jq -r '.[] | select(.description == "Corsair HX1000i") | .status[] | select(.key == "Total power output") | .value')"
+		power="$(<"$liquidctl_json" jq -r '.[] | select(.description == "Corsair HX1000i") | .status[] | select(.key == "Total power output") | .value')"; power="${power%.*}"
+		cpu_temp="$(<"$liquidctl_json" jq -r '.[] | select(.description == "Corsair Hydro H100i Pro XT") | .status[] | select(.key == "Liquid temperature") | .value')"; cpu_temp_x10="$(bc_scale "$cpu_temp*10" "scale=0")"; cpu_temp="$(bc_scale "$cpu_temp" "scale=1")"
 		cpu_fan="$(<"$liquidctl_json" jq -r '.[] | select(.description == "Corsair Hydro H100i Pro XT") | .status | map(select(.key | match("Fan [0-9]+ duty"))) | map(.value) | max')"
+		ram_temp="$(<"$liquidctl_json" jq -r '.[] | select(.description == "Corsair Commander Pro") | .status | map(select(.key | match("Temperature [0-9]+"))) | map(.value) | max')"; ram_temp_x10="$(bc_scale "$ram_temp*10" "scale=0")"; ram_temp="$(bc_scale "$ram_temp" "scale=1")";
 
 		grep drivetemp /sys/class/hwmon/hwmon*/name | xargs -n1 dirname | xargs -I{} cat "{}/temp1_input" | readarray -t drivetemps
 		drivetemp=$(( $(max "${drivetemps[@]}") / 1000 ))
 
-		log "auto[state=$STATE]: $(date): power=${power}W, cpu_fan=${cpu_fan}%, drivetemp=${drivetemp}°C"
+		log "auto[state=$STATE]: $(date): power=${power}W, cpu_temp=${cpu_temp}°C, cpu_fan=${cpu_fan}%, ram_temp=${ram_temp}°C, drivetemp=${drivetemp}°C"
 
 		case "$STATE" in
+		cold)
+			auto_set_profile "passive"
+
+			if (( power >= 330 )); then
+				auto_set_state "loaded"
+				continue
+			fi
+
+			if (( drivetemp >= 45 )) || (( ram_temp_x10 > 450 )); then
+				auto_set_state "hot"
+				continue
+			fi
+
+			if (( power >= 200 )) && (( cpu_temp_x10 >= 340 )); then
+				auto_set_state "normal"
+				continue
+			fi
+			;;
+
 		normal)
-			if (( cpu_fan >= 60 )) || (( drivetemp > 45 )); then
-				auto_set_profile "semiperf"
+			if (( cpu_fan >= 55 )); then
+				auto_set_profile "normal_hi"
 			else
 				auto_set_profile "normal"
 			fi
 
-			if (( power >= 350 )); then
+			if (( power >= 330 )); then
 				auto_set_state "loaded"
+				continue
+			fi
+
+			if (( drivetemp >= 45 )) || (( ram_temp_x10 > 450 )); then
+				auto_set_state "hot"
+				continue
+			fi
+
+			if (( power <= 150 )) && (( cpu_temp_x10 <= 320 )); then
+				auto_set_state "cold"
+				continue
+			fi
+			;;
+
+		hot)
+			auto_set_profile "normal_hi"
+
+			if (( power >= 330 )); then
+				auto_set_state "loaded"
+				continue
+			fi
+
+			if (( drivetemp <= 41 )) && (( ram_temp_x10 <= 440 )); then
+				auto_set_state "normal"
 				continue
 			fi
 			;;
 
 		loaded)
-			auto_set_profile "semiperf"
+			auto_set_profile "performance"
 
-			if (( power < 200 )) && (( cpu_fan <= 50 )); then
+			if (( power < 200 )) && (( cpu_temp_x10 <= 320 )); then
 				auto_set_state "normal"
 				continue
 			fi
 			;;
 		*)
-			auto_set_state "normal"
+			auto_set_state "cold"
 			continue
 			;;
 		esac
+
+		auto_set_profile_commit
 		sleep 10
 	done
 }
@@ -437,14 +536,16 @@ auto)
 	PROFILE=auto ;;
 normal|default)
 	PROFILE=normal ;;
-max|perf|performance)
-	PROFILE=performance ;;
-min|quiet|silent)
-	PROFILE=quiet ;;
-semisilent|semiquiet|semi)
-	PROFILE=semiquiet ;;
-semiperf|active)
-	PROFILE=semiperf ;;
+normal_hi)
+	PROFILE=normal_hi ;;
+quiet|passive)
+	PROFILE=passive ;;
+perf|performance|active)
+	PROFILE=active ;;
+max)
+	PROFILE=max ;;
+min)
+	PROFILE=min ;;
 *)
 	die "Unknown profile: '$ARG_PROFILE'"
 esac

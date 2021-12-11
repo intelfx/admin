@@ -70,6 +70,8 @@ hugepages_setup() {
 	eval "$(ltraps)"
 
 	local LIBSH_LOG_PREFIX="qemu::hugepages_setup($GUEST_NAME)"
+	STATE_FILE="$STATE_DIR/hugepages/$GUEST_NAME"
+	rm -f "$STATE_FILE"
 
 	log "reserving hugepages"
 	local mem_unit mem_value mem_size
@@ -191,7 +193,6 @@ hugepages_setup() {
 		die "hugepages($huge): allocating: exceeded attempts, releasing $((huge_nr_actual-huge_nr_orig)) allocated so far"
 	fi
 
-	STATE_FILE="$STATE_DIR/hugepages/$GUEST_NAME"
 	mkdir -p "${STATE_FILE%/*}"
 	cat <<-EOF >"$STATE_FILE"
 	huge=$huge
@@ -257,6 +258,8 @@ cpufreq_setup() {
 	eval "$(ltraps)"
 
 	local LIBSH_LOG_PREFIX="qemu::cpufreq_setup($GUEST_NAME)"
+	STATE_FILE="$STATE_DIR/cpufreq/$GUEST_NAME"
+	rm -f "$STATE_FILE"
 
 	log "configuring cpufreq governor for pinned CPUs"
 	declare -a cpus
@@ -293,7 +296,6 @@ cpufreq_setup() {
 		echo "$VCPU_ONDEMAND_THRESHOLD" >/sys/devices/system/cpu/cpufreq/ondemand/up_threshold
 	fi
 
-	STATE_FILE="$STATE_DIR/cpufreq/$GUEST_NAME"
 	mkdir -p "${STATE_FILE%/*}"
 	declare -p governor_state >"$STATE_FILE"
 	luntrap

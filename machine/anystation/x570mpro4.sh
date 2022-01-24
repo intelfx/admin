@@ -90,7 +90,7 @@ nct6775_pwm_curve() {
 
 initialize() {
 	liquidctl -m 'Commander Pro' initialize || true
-	liquidctl -m 'HX1000i' initialize --single-12v-ocp || true
+	liquidctl -m 'HX1000i' initialize || true
 	liquidctl -m 'HX1000i' set fan speed 30 || true
 	liquidctl -m 'H100i' initialize --pump-mode balanced || true
 }
@@ -141,8 +141,8 @@ profile_active() {
 	# H100i: CPU exhaust
 	liquidctl -m 'H100i' set fan speed \
 		20 $h100i_quiet \
-		31 $h100i_quiet \
-		32 $h100i_loud \
+		30 $h100i_quiet \
+		31 $h100i_loud \
 		40 $h100i_loud \
 		41 100
 
@@ -306,9 +306,7 @@ profile_passive() {
 profile_min() {
 	liquidctl -m 'H100i' set fan speed \
 		20 $h100i_silent \
-		25 $h100i_quiet \
-		30 $h100i_quiet \
-		36 $h100i_quiet \
+		39 $h100i_silent \
 		40 100
 
 	# Commander fan1, fan2: left chamber fan (CPU/GPU top intake, CPU/GPU bottom intake)
@@ -318,7 +316,7 @@ profile_min() {
 
 	# Commander fan4, fan6: right chamber fan (HDD intake, exhaust)
 	for fan in fan4 fan6; do
-		liquidctl -m 'Commander Pro' set $fan speed $case_silent
+		liquidctl -m 'Commander Pro' set $fan speed $case_silent_2
 	done
 
 	# pwm6: PCH fan
@@ -391,7 +389,9 @@ profile_auto() {
 		ram_temp="$(<"$liquidctl_json" jq -r '.[] | select(.description == "Corsair Commander Pro") | .status | map(select(.key | match("Temperature [0-9]+"))) | map(.value) | max')"; ram_temp_x10="$(bc_scale "$ram_temp*10" "scale=0")"; ram_temp="$(bc_scale "$ram_temp" "scale=1")";
 
 		grep drivetemp /sys/class/hwmon/hwmon*/name | xargs -n1 dirname | xargs -I{} cat "{}/temp1_input" | readarray -t drivetemps
-		drivetemp=$(( $(max "${drivetemps[@]}") / 1000 ))
+		drivetemp_max="$(max "${drivetemps[@]}")"
+		drivetemp="$(bc_scale "$drivetemp_max/1000" "scale=1")"
+		drivetemp_x10="$(bc_scale "$drivetemp_max/100" "scale=0")"
 
 		log "auto[state=$STATE]: $(date): power=${power}W, cpu_temp=${cpu_temp}°C, cpu_fan=${cpu_fan}%, ram_temp=${ram_temp}°C, drivetemp=${drivetemp}°C"
 
@@ -399,17 +399,17 @@ profile_auto() {
 		cold)
 			auto_set_profile "passive"
 
-			if (( power >= 330 )); then
+			if (( power > 330 )); then
 				auto_set_state "loaded"
 				continue
 			fi
 
-			if (( drivetemp >= 45 )) || (( ram_temp_x10 > 450 )); then
+			if (( drivetemp_x10 > 450 )) || (( ram_temp_x10 > 450 )); then
 				auto_set_state "hot"
 				continue
 			fi
 
-			if (( power >= 200 )) && (( cpu_temp_x10 >= 340 )); then
+			if (( power > 200 )) && (( cpu_temp_x10 > 340 )); then
 				auto_set_state "normal"
 				continue
 			fi
@@ -427,7 +427,7 @@ profile_auto() {
 				continue
 			fi
 
-			if (( drivetemp >= 45 )) || (( ram_temp_x10 > 450 )); then
+			if (( drivetemp_x10 > 450 )) || (( ram_temp_x10 > 450 )); then
 				auto_set_state "hot"
 				continue
 			fi
@@ -441,12 +441,12 @@ profile_auto() {
 		hot)
 			auto_set_profile "normal_hi"
 
-			if (( power >= 330 )); then
+			if (( power > 330 )); then
 				auto_set_state "loaded"
 				continue
 			fi
 
-			if (( drivetemp <= 41 )) && (( ram_temp_x10 <= 440 )); then
+			if (( drivetemp_x10 <= 420 )) && (( ram_temp_x10 <= 440 )); then
 				auto_set_state "normal"
 				continue
 			fi
@@ -455,7 +455,7 @@ profile_auto() {
 		loaded)
 			auto_set_profile "performance"
 
-			if (( power < 200 )) && (( cpu_temp_x10 <= 320 )); then
+			if (( power <= 200 )) && (( cpu_temp_x10 <= 340 )); then
 				auto_set_state "normal"
 				continue
 			fi
@@ -485,15 +485,17 @@ pchfan_quiet=160
 # 192: ~4800 RPM, definitely noticeable, maximum acceptable high-pitched noise
 pchfan_loud=192
 
-# 40: ~700 RPM, definitely inaudible
+# 40: ~980 RPM, definitely inaudible
 h100i_silent=40
-# 42: ~1000 RPM, almost inaudible
+# 43: ~1100 RPM, almost inaudible
 h100i_quiet=43
 # 60: ~1500 RPM, maximum acceptable noise
 h100i_loud=60
 
-# 60: ~800 RPM, definitely inaudible
+# 60: ~890 RPM, definitely inaudible
 case_silent=60
+# 65: ~950 RPM
+case_silent_2=70
 # 75: ~1000 RPM, almost unnoticeable
 case_quiet=75
 # 100: ~1300-1400 RPM, definitely noticeable

@@ -45,6 +45,7 @@ cd "${BASH_SOURCE%/*}"
 CMDLINE=(
 	/usr/bin/env
 	LC_ALL=C
+	WINEPREFIX=/etc/admin/wineprefix
 	/usr/bin/wine
 	./AutoHotkeyU64.exe
 	consolidate.ahk
@@ -54,7 +55,7 @@ CMDLINE=(
 )
 
 log "Starting: ${CMDLINE[@]}"
-startx "${CMDLINE[@]}" -- /usr/bin/Xvnc :9 &>"$WINE_LOG"
+xinit "${CMDLINE[@]}" -- /usr/bin/Xvnc :9 -auth /etc/admin/Xauthority 2>"$WINE_LOG"
 
 log "Resetting target mtime"
 touch -d "@$ARG2_MTIME" "$ARG1_PATH"

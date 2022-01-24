@@ -29,6 +29,7 @@ CONSOLIDATE_LOG="$(unix_to_wine consolidate.log)"
 WINE_LOG="$(realpath --strip wine.log)"
 
 ARG1_PATH="$(realpath --strip "$1")"
+ARG2_PATH="$(realpath --strip "$2")"
 ARG2_MTIME="$(stat -c '%.Y' "$2")"
 
 rm -f consolidate.log wine.log
@@ -57,5 +58,18 @@ CMDLINE=(
 log "Starting: ${CMDLINE[@]}"
 xinit "${CMDLINE[@]}" -- /usr/bin/Xvnc :9 -auth /etc/admin/Xauthority 2>"$WINE_LOG"
 
-log "Resetting target mtime"
-touch -d "@$ARG2_MTIME" "$ARG1_PATH"
+if [[ -e "$ARG1_PATH" && -e "$ARG2_PATH" ]]; then
+	err "Consolidation failure -- both files still exist"
+	exit 1
+elif [[ -e "$ARG1_PATH" ]]; then
+	# arg1 is full, arg2 is incremental
+	log "Resetting target mtime"
+	touch -d "@$ARG2_MTIME" "$ARG1_PATH"
+elif [[ -e "$ARG2_PATH" ]]; then
+	# both arg1 and arg2 are incremental -- consolidate.exe deletes source and renames target to source
+	log "Resetting target mtime"
+	touch -d "@$ARG2_MTIME" "$ARG2_PATH"
+else
+	err "Consolidation failure -- neither file exists"
+	exit 1
+fi

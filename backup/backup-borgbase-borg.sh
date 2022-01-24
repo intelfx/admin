@@ -56,6 +56,8 @@ declare -A BORG_TARGETS=(
 	[Backups/SMB]="--chunker-params buzhash,10,23,16,4095"
 )
 
+exitcode=0
+
 for target in "${!BORG_TARGETS[@]}"; do
 	(
 	if [[ $target == . ]]; then
@@ -132,5 +134,14 @@ for target in "${!BORG_TARGETS[@]}"; do
 		"$@" \
 		"$url::$TIMESTAMP" \
 		.
-	)
+	) && rc=0 || rc=$?
+
+	if (( rc == 1 )); then
+		warn "$target: minor problems when backing up to $url, continuing"
+	elif (( rc > 1 )); then
+		err "$target: failed to back up to $url"
+		(( ++exitcode ))
+	fi
 done
+
+exit $exitcode

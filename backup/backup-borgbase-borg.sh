@@ -30,6 +30,15 @@ cleanup() {
 }
 trap cleanup TERM HUP INT EXIT
 
+borgbase_name_by_target() {
+	local target="$1"
+	if [[ $target == . ]]; then
+		echo "$BORGBASE_NAME"
+	else
+		echo "$BORGBASE_NAME/$target"
+	fi
+}
+
 borgbase_wait() {
 	local url="$1"
 	local host="$url"
@@ -51,22 +60,32 @@ borgbase_wait() {
 # easiest this way, the rest of the script hardcodes "."
 cd "$LOCAL_PATH"
 
-declare -A BORG_TARGETS=(
+BORG_TARGETS=(
+	.
+	Backups/SMB
+)
+
+declare -A BORG_PARAMS=(
 	[.]="--chunker-params buzhash,10,23,20,4095"
 	[Backups/SMB]="--chunker-params buzhash,10,23,16,4095"
 )
 
+declare -A BORG_PRUNE=(
+	[.]="--keep-last 1 --keep-daily 7 --keep-weekly 4 --keep-monthly -1"
+	[Backups/SMB]="--keep-last 1 --keep-monthly -1"
+)
+
+declare -A BORG_URLS
+
 exitcode=0
 
-for target in "${!BORG_TARGETS[@]}"; do
-	(
-	if [[ $target == . ]]; then
-		name="$BORGBASE_NAME"
-	else
-		name="$BORGBASE_NAME/$target"
-	fi
+for target in "${BORG_TARGETS[@]}"; do
+	name="$(borgbase_name_by_target "$target")"
 	url="$("$SCRIPT_DIR/borgbase-get-repo.sh" "$name" "$BORGBASE_CREATE_ARGS"):repo"
 	log "$target: backing up to BorgBase repo $name at $url"
+	BORG_URLS[$target]="$url"
+
+	(
 	borgbase_wait "$url"
 
 	if ! borg debug get-obj "$url" "$(printf '%064d' '0')" /dev/null; then
@@ -80,7 +99,7 @@ for target in "${!BORG_TARGETS[@]}"; do
 
 	# exclude all other targets
 	p1="$(realpath --strip "$target")"
-	for other in "${!BORG_TARGETS[@]}"; do
+	for other in "${BORG_TARGETS[@]}"; do
 		p2="$(realpath --strip "$other")"
 		if [[ $p2 == $p1/* ]]; then
 			log "$other ($p2) is under $target ($p1), skipping"
@@ -128,7 +147,7 @@ for target in "${!BORG_TARGETS[@]}"; do
 		--keep-exclude-tags \
 		--patterns-from "$patterns" \
 		--compression zstd,10 \
-		${BORG_TARGETS[$target]} \
+		${BORG_PARAMS[$target]} \
 		--timestamp "$TIMESTAMP_UTC" \
 		--stats --progress --verbose \
 		"$@" \
@@ -140,6 +159,29 @@ for target in "${!BORG_TARGETS[@]}"; do
 		warn "$target: minor problems when backing up to $url, continuing"
 	elif (( rc > 1 )); then
 		err "$target: failed to back up to $url"
+		(( ++exitcode ))
+	fi
+done
+
+for target in "${BORG_TARGETS[@]}"; do
+	(
+	name="$(borgbase_name_by_target "$target")"
+	url="${BORG_URLS[$target]}"
+	if ! [[ $url ]]; then
+		err "$target: URL not registered during backup, check prune configuration"
+		(( ++exitcode ))
+		exit 1
+	fi
+
+	log "$target: pruning BorgBase repo $name at $url"
+	borg prune \
+		--stats --progress --list --verbose \
+		${BORG_PRUNE[$target]} \
+		"$url"
+	) && rc=0 || rc=$?
+
+	if (( rc > 0 )); then
+		err "$target: failed to prune $url"
 		(( ++exitcode ))
 	fi
 done

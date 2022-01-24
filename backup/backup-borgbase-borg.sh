@@ -70,7 +70,6 @@ for target in "${!BORG_TARGETS[@]}"; do
 	if ! borg debug get-obj "$url" "$(printf '%064d' '0')" /dev/null; then
 		log "$target: initializing borg repo at $url"
 		borg init "${BORG_INIT_ARGS[@]}" "$url"
-		echo ok
 	fi
 
 	declare -a patterns_p=()

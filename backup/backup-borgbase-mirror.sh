@@ -4,8 +4,9 @@ set -eo pipefail
 shopt -s lastpipe
 shopt -s extglob
 
-SCRIPT_DIR="${BASH_SOURCE%/*}"
-cd "${BASH_SOURCE%/*}"
+SCRIPT_DIR="$(realpath -s "${BASH_SOURCE%/*}")"
+SCRIPT_PATH="$(realpath -s "$BASH_SOURCE")"
+cd "$SCRIPT_DIR"
 . lib/lib.sh || exit 1
 
 LOCAL_PATH=/mnt/data
@@ -177,5 +178,5 @@ do_rsync \
 if (( NEED_RERUN )); then
 	log "Some directories were skipped -- restarting in a minute"
 	sleep 60
-	exec "$0" "$@"
+	exec "$SCRIPT_PATH" "$@"
 fi

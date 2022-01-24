@@ -30,6 +30,24 @@ cleanup() {
 }
 trap cleanup TERM HUP INT EXIT
 
+borgbase_wait() {
+	local url="$1"
+	local host="$url"
+	host="${host%:*}"
+	host="${host#*@}"
+
+	local timeout=1
+	while :; do
+		if getent hosts "$host" &>/dev/null; then
+			break
+		fi
+		log "Waiting $timeout s for $host to resolve..."
+		sleep "$timeout"
+		(( timeout = timeout*2 < 60 ? timeout*2 : 60 ))
+	done
+
+}
+
 # easiest this way, the rest of the script hardcodes "."
 cd "$LOCAL_PATH"
 
@@ -47,6 +65,7 @@ for target in "${!BORG_TARGETS[@]}"; do
 	fi
 	url="$("$SCRIPT_DIR/borgbase-get-repo.sh" "$name" "$BORGBASE_CREATE_ARGS"):repo"
 	log "$target: backing up to BorgBase repo $name at $url"
+	borgbase_wait "$url"
 
 	if ! borg debug get-obj "$url" "$(printf '%064d' '0')" /dev/null; then
 		log "$target: initializing borg repo at $url"

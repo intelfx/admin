@@ -19,11 +19,10 @@ run_task() {
 }
 
 run_task ./backup-pull-openwrt.sh root@router.nexus.i.intelfx.name
-
-run_task ./macrium-consolidate.sh /mnt/data/Backups/SMB/smb-arcadia 30 60
-
 run_task ./backup-borgbase-borg.sh
 run_task ./backup-borgbase-mirror.sh --itemize-changes
+
+run_task ./macrium-consolidate.sh /mnt/data/Backups/SMB/smb-arcadia 30 60
 
 if (( ${#FAILED_TASKS[@]} )); then
 	err "Failed $RC tasks:"

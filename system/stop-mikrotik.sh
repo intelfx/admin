@@ -8,5 +8,5 @@ log "stop-mikrotik.sh: stopping $HOSTNAME"
 
 host="admin@$HOSTNAME"
 identity="/etc/admin/keys/id_rsa"
-ssh_prep
+ssh_prep -o PubkeyAcceptedAlgorithms=+ssh-rsa
 do_ssh '/system/shutdown'

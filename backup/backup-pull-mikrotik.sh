@@ -8,7 +8,7 @@ dest="/mnt/data/Backups/Hosts"
 password="$(< /etc/admin/keys/backup-mikrotik )"
 identity="/etc/admin/keys/id_rsa"
 
-ssh_prep
+ssh_prep -o PubkeyAcceptedAlgorithms=+ssh-rsa
 dest="$dest/$addr"
 
 log "$0: backing up '$host' to '$dest'"

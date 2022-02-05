@@ -19,6 +19,7 @@ run_task() {
 }
 
 run_task ./backup-pull-openwrt.sh root@router.nexus.i.intelfx.name
+run_task ./backup-pull-mikrotik.sh admin@chr.nexus.i.intelfx.name
 run_task ./backup-borgbase-borg.sh
 run_task ./backup-borgbase-mirror.sh --itemize-changes
 

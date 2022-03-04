@@ -12,7 +12,7 @@ args, remainder = parser.parse_known_args()
 worker_app = None
 
 for f in args.config_path:
-	f = yaml.load(open(f))
+	f = yaml.load(open(f), Loader=yaml.Loader)
 	if 'worker_app' in f:
 		if worker_app is not None:
 			raise RuntimeError('worker_app specified multiple times')

@@ -77,13 +77,38 @@ declare -A BORG_PRUNE=(
 
 declare -A BORG_URLS
 
+OP_CREATE=1
+OP_PRUNE=1
+OP_COMPACT=0
+
+if (( $# > 0 )); then
+	OP_CREATE=0
+	OP_PRUNE=0
+	OP_COMPACT=0
+
+	for arg; do
+		case "$arg" in
+		--create)
+			OP_CREATE=1 ;;
+		--prune)
+			OP_PRUNE=1 ;;
+		--compact)
+			OP_COMPACT=1 ;;
+		*)
+			die "Invalid argument: $arg (expected --create, --prune or --compact)" ;;
+		esac
+	done
+fi
+
 exitcode=0
 
 for target in "${BORG_TARGETS[@]}"; do
 	name="$(borgbase_name_by_target "$target")"
 	url="$("$SCRIPT_DIR/borgbase-get-repo.sh" "$name" "$BORGBASE_CREATE_ARGS"):repo"
-	log "$target: backing up to BorgBase repo $name at $url"
 	BORG_URLS[$target]="$url"
+
+	if (( OP_CREATE )); then
+	log "$target: backing up to BorgBase repo $name at $url"
 
 	(
 	borgbase_wait "$url"
@@ -150,7 +175,6 @@ for target in "${BORG_TARGETS[@]}"; do
 		${BORG_PARAMS[$target]} \
 		--timestamp "$TIMESTAMP_UTC" \
 		--stats --progress --verbose \
-		"$@" \
 		"$url::$TIMESTAMP" \
 		.
 	) && rc=0 || rc=$?
@@ -161,7 +185,11 @@ for target in "${BORG_TARGETS[@]}"; do
 		err "$target: failed to back up to $url"
 		(( ++exitcode ))
 	fi
+
+	fi
 done
+
+if (( OP_PRUNE )); then
 
 for target in "${BORG_TARGETS[@]}"; do
 	(
@@ -191,6 +219,10 @@ for target in "${BORG_TARGETS[@]}"; do
 	fi
 done
 
+fi
+
+if (( OP_COMPACT )); then
+
 for target in "${BORG_TARGETS[@]}"; do
 	(
 	name="$(borgbase_name_by_target "$target")"
@@ -212,5 +244,7 @@ for target in "${BORG_TARGETS[@]}"; do
 		(( ++exitcode ))
 	fi
 done
+
+fi
 
 exit $exitcode

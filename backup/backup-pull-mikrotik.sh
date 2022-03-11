@@ -8,11 +8,10 @@ dest="/mnt/data/Backups/Hosts"
 password="$(< /etc/admin/keys/backup-mikrotik )"
 identity="/etc/admin/keys/id_rsa"
 
+log "$0: backing up '$host' to '$dest'"
+
 ssh_prep -o PubkeyAcceptedAlgorithms=+ssh-rsa
 dest="$dest/$addr"
-
-log "$0: backing up '$host' to '$dest'"
-mkdir -p "$dest"
 
 trap "rm -rf '$tempdir'" EXIT
 tempdir="$(mktemp -d)"
@@ -39,5 +38,6 @@ EOF
 	#get auto-backup.rsc "$host_identity.rsc"
 	#get auto-backup-verbose.rsc "$host_identity-verbose.rsc"
 
+mkdir -p "$dest"
 rm -rf "$dest"/*
 rsync -rt --delete "$tempdir"/ "$dest"/

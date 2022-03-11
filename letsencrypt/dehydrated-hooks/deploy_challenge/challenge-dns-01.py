@@ -130,7 +130,7 @@ lib.configure_logging(prefix=f'DNS-01: {args.domain}: ')
 # load config
 #
 
-config = yaml.load(open('/etc/admin/dns/dns.yaml'))
+config = yaml.load(open('/etc/admin/dns/dns.yaml'), Loader=yaml.Loader)
 config = lib.attrdict(config)
 
 

@@ -53,6 +53,7 @@ cd "$LOCAL_PATH"
 
 # NOTE: -prune doesn't work, don't include nested DONTBORG.TAG!
 find . \
+	! -readable -prune -or \
 	-type f \
 	-name DONTBORG.TAG \
 	-printf '%h\n' \
@@ -60,6 +61,7 @@ find . \
 readarray -t targets_p <"$targets"
 
 find "${targets_p[@]}" \
+	! -readable -prune -or \
 	-type f \
 	\( -name CACHEDIR.TAG -or -name NOBACKUP.TAG \) \
 	-printf '%h\n' \
@@ -69,6 +71,7 @@ readarray -t exclusions_p <"$exclusions"
 if (( ${#exclusions_p[@]} )); then
 
 find "${exclusions_p[@]}" \
+	! -readable -prune -or \
 	-type f \
 	-name BACKUP.TAG \
 	-printf '%h\n' \

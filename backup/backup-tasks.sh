@@ -18,6 +18,16 @@ run_task() {
 	fi
 }
 
+log_tasks() {
+	if (( ${#FAILED_TASKS[@]} )); then
+		err "Failed $RC tasks:"
+		printf '* %s\n' "${FAILED_TASKS[@]}"
+		exit ${#FAILED_TASKS[@]}
+	fi
+	exit 0
+}
+trap log_tasks EXIT
+
 run_task ./backup-pull-openwrt.sh root@router.nexus.i.intelfx.name
 run_task ./backup-pull-mikrotik.sh admin@chr.nexus.i.intelfx.name
 run_task ./backup-borgbase-borg.sh
@@ -25,9 +35,3 @@ run_task ./backup-borgbase-mirror.sh --itemize-changes
 
 run_task ./macrium-consolidate.sh /mnt/data/Backups/SMB/smb-arcadia 30 60
 
-if (( ${#FAILED_TASKS[@]} )); then
-	err "Failed $RC tasks:"
-	printf '* %s\n' "${FAILED_TASKS[@]}"
-	exit ${#FAILED_TASKS[@]}
-fi
-exit 0

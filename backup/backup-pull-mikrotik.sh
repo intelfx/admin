@@ -16,14 +16,6 @@ dest="$dest/$addr"
 trap "rm -rf '$tempdir'" EXIT
 tempdir="$(mktemp -d)"
 
-host_identity="$(do_ssh ":put [/system identity get name]" | tr -d '\r\n')"
-
-if ! [[ "$host_identity" ]]; then
-	die "$0: host '$host' does not tell us its identity, exiting"
-fi
-
-log "$0: using identity '$host_identity' for host '$host'"
-
 do_ssh <<-EOF
 	/system backup save password="$password" name="auto-backup"
 EOF
@@ -32,7 +24,7 @@ EOF
 
 do_sftp <<-EOF
 	lcd "$tempdir"
-	get auto-backup.backup "$host_identity.backup"
+	get auto-backup.backup
 	rm auto-backup*
 EOF
 	#get auto-backup.rsc "$host_identity.rsc"

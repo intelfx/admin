@@ -186,4 +186,26 @@ for target in "${BORG_TARGETS[@]}"; do
 	fi
 done
 
+for target in "${BORG_TARGETS[@]}"; do
+	(
+	name="$(borgbase_name_by_target "$target")"
+	url="${BORG_URLS[$target]}"
+	if ! [[ $url ]]; then
+		err "$target: URL not registered during backup, check prune configuration"
+		(( ++exitcode ))
+		exit 1
+	fi
+
+	log "$target: compacting BorgBase repo $name at $url"
+	borg compact \
+		--verbose --progress \
+		"$url" \
+	) && rc=0 || rc=$?
+
+	if (( rc > 0 )); then
+		err "$target: failed to compact $url"
+		(( ++exitcode ))
+	fi
+done
+
 exit $exitcode

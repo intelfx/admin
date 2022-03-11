@@ -68,21 +68,13 @@ find "${targets_p[@]}" \
 	>"$exclusions"
 readarray -t exclusions_p <"$exclusions"
 
-if (( ${#exclusions_p[@]} )); then
-
-find "${exclusions_p[@]}" \
+maybe_find "${exclusions_p[@]}" \
 	! -readable -prune -or \
 	-type f \
 	-name BACKUP.TAG \
 	-printf '%h\n' \
 	>"$inclusions"
 readarray -t inclusions_p <"$inclusions"
-
-else
-
-inclusions_p=()
-
-fi
 
 # some less-than-superficial checks whether $1 is a borg repository
 find "${targets_p[@]}" \

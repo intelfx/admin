@@ -174,10 +174,15 @@ for target in "${BORG_TARGETS[@]}"; do
 	fi
 
 	log "$target: pruning BorgBase repo $name at $url"
+	borg delete \
+		-a '*.checkpoint' \
+		--verbose --list --stats \
+		"$url" || exit
+
 	borg prune \
 		--stats --progress --list --verbose \
 		${BORG_PRUNE[$target]} \
-		"$url"
+		"$url" || exit
 	) && rc=0 || rc=$?
 
 	if (( rc > 0 )); then

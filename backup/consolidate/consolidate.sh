@@ -64,11 +64,11 @@ if [[ -e "$ARG1_PATH" && -e "$ARG2_PATH" ]]; then
 elif [[ -e "$ARG1_PATH" ]]; then
 	# arg1 is full, arg2 is incremental
 	log "Resetting target mtime"
-	touch -d "@$ARG2_MTIME" "$ARG1_PATH"
+	touch -d "@$ARG2_MTIME" "$ARG1_PATH" || true
 elif [[ -e "$ARG2_PATH" ]]; then
 	# both arg1 and arg2 are incremental -- consolidate.exe deletes source and renames target to source
 	log "Resetting target mtime"
-	touch -d "@$ARG2_MTIME" "$ARG2_PATH"
+	touch -d "@$ARG2_MTIME" "$ARG2_PATH" || true
 else
 	err "Consolidation failure -- neither file exists"
 	exit 1

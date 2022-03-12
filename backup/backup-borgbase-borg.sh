@@ -131,10 +131,18 @@ for target in "${BORG_TARGETS[@]}"; do
 			realpath --strip --relative-to="$target" "$other"
 		fi
 	done >"$blacklist"
-
+	# locations that are mirrored to a separate raw repo, bypassing borg
 	find . \
 		-type f \
 		-name DONTBORG.TAG \
+		-printf '%h\n' \
+		>>"$blacklist"
+	# borg repositories are mirrored to separate borg repos
+	find . \
+		-type f \
+		-name 'config' \
+		-execdir test -d 'data' \; \
+		-execdir grep -q -Fx '[repository]' {} \; \
 		-printf '%h\n' \
 		>>"$blacklist"
 	readarray -t blacklist_p <"$blacklist"

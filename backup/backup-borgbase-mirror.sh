@@ -35,32 +35,21 @@ done
 
 # rsync does not have any facilities to filter by "tag files" (CACHEDIR.TAG),
 # sunrise by hand
-all="$(mktemp)"
-targets="$(mktemp)"
 inclusions="$(mktemp)"
 exclusions="$(mktemp)"
 
-# directories with special transfer rules
-special_borg="$(mktemp)"
+targets_borg="$(mktemp)"
+targets_files="$(mktemp)"
 
 cleanup() {
-	rm -f "$all" "$targets" "$inclusions" "$exclusions" "$special_borg"
+	rm -f "$inclusions" "$exclusions" "$targets_borg" "$targets_files"
 }
 trap cleanup TERM HUP INT EXIT
 
 # easiest this way, the rest of the script hardcodes "."
 cd "$LOCAL_PATH"
 
-# NOTE: -prune doesn't work, don't include nested DONTBORG.TAG!
 find . \
-	! -readable -prune -or \
-	-type f \
-	-name DONTBORG.TAG \
-	-printf '%h\n' \
-	>"$targets"
-readarray -t targets_p <"$targets"
-
-find "${targets_p[@]}" \
 	! -readable -prune -or \
 	-type f \
 	\( -name CACHEDIR.TAG -or -name NOBACKUP.TAG \) \
@@ -76,17 +65,31 @@ maybe_find "${exclusions_p[@]}" \
 	>"$inclusions"
 readarray -t inclusions_p <"$inclusions"
 
+findctl_init FIND
+findctl_add_targets FIND .
+findctl_add_exclusions FIND "${exclusions_p[@]}"
+findctl_add_inclusions FIND "${inclusions_p[@]}"
+findctl_add_pre_args FIND \
+	! -readable -prune -or
+
 # some less-than-superficial checks whether $1 is a borg repository
-find "${targets_p[@]}" \
+findctl_run FIND \
 	-type f \
 	-name 'config' \
 	-execdir test -d 'data' \; \
 	-execdir grep -q -Fx '[repository]' {} \; \
 	-printf '%h\n' \
-	>"$special_borg"
+	>"$targets_borg"
+readarray -t targets_borg_p <"$targets_borg"
 
-echo "TARGETS:"
-cat $targets; echo
+# other locations that have to be backed up with rsync into a separate raw repo, bypassing borg
+#findctl_add_exclusions FIND "${targets_borg_p[@]}"
+findctl_run FIND \
+	-type f \
+	-name DONTBORG.TAG \
+	-printf '%h\n' \
+	>"$targets_files"
+readarray -t targets_files_p <"$targets_files"
 
 echo "EXCLUSIONS:"
 cat $exclusions; echo
@@ -95,14 +98,17 @@ echo "INCLUSIONS:"
 cat $inclusions; echo
 
 echo "BORG REPOS:"
-cat $special_borg; echo
+cat $targets_borg; echo
+
+echo "MISC FILES:"
+cat $targets_files; echo
+
 
 #
 # Borg special handling: compact (conservatively) before uploading
 #
 
-readarray -t special_borg_p <"$special_borg"
-for dir in "${special_borg_p[@]}"; do
+for dir in "${targets_borg_p[@]}"; do
 	log "$dir: looks like a borg repository${BORG_COMPACT:+", trying to compact"}"
 	#if ! borg with-lock --lock-wait=0 "$dir" -- true; then
 	if [[ -e "$dir/lock.exclusive" ]]; then
@@ -138,10 +144,7 @@ do_rsync() {
 
 }
 
-for dir in "${special_borg_p[@]}"; do
-	if grep -qx "$dir" "$exclusions"; then
-		continue
-	fi
+for dir in "${targets_borg_p[@]}"; do
 	name="$BORGBASE_NAME/${dir#./}"
 	url="$("$SCRIPT_DIR/borgbase-get-repo.sh" "$name" "$BORGBASE_CREATE_ARGS")"
 	log "$dir: backing up to BorgBase repo $name at $url"
@@ -157,15 +160,13 @@ done
 sed -r 's|^\./|/|' \
 	-i "$exclusions" \
 	-i "$inclusions" \
-	-i "$special_borg" \
 
 url="$("$SCRIPT_DIR/borgbase-get-repo.sh" "$BORGBASE_NAME_CATCH_ALL" "$BORGBASE_CREATE_ARGS")"
 log ".: backing up all other files to BorgBase repo $BORGBASE_NAME_CATCH_ALL at $url"
 do_rsync \
-	--files-from="$targets" \
+	--files-from="$targets_files" \
 	--exclude-from="$exclusions" \
 	--include-from="$inclusions" \
-	--exclude-from="$special_borg" \
 	./ \
 	"$url:" \
 	"${ARGS[@]}" 

@@ -306,7 +306,7 @@ profile_passive() {
 profile_min() {
 	liquidctl -m 'H100i' set fan speed \
 		20 $h100i_silent \
-		39 $h100i_silent \
+		36 $h100i_silent \
 		40 100
 
 	# Commander fan1, fan2: left chamber fan (CPU/GPU top intake, CPU/GPU bottom intake)
@@ -397,7 +397,7 @@ profile_auto() {
 
 		case "$STATE" in
 		cold)
-			auto_set_profile "passive"
+			auto_set_profile "min"
 
 			if (( power > 330 )); then
 				auto_set_state "loaded"

@@ -16,6 +16,15 @@ BORGBASE_NAME="$(hostname --short)/tank/files"
 BORGBASE_NAME_CATCH_ALL="$BORGBASE_NAME"
 BORGBASE_CREATE_ARGS="region:\"eu\", borgVersion:\"V_1_2_X\", rsyncKeys:[\"18566\"]"
 
+BORG_PROGRESS_ARGS=()
+RSYNC_PROGRESS_ARGS=()
+if [[ -t 2 ]]; then
+	BORG_PROGRESS_ARGS+=( --progress )
+	RSYNC_PROGRESS_ARGS+=( --info=progress2 )
+else
+	RSYNC_PROGRESS_ARGS+=( --itemize-changes )
+fi
+
 NEED_RERUN=0
 
 BORG_COMPACT=1
@@ -126,7 +135,7 @@ for dir in "${targets_borg_p[@]}"; do
 		log "$dir: Borg repository was compacted less than 1 week ago, skipping"
 		continue
 	fi
-	borg compact --verbose --progress "$dir" || die "$dir: failed to compact"
+	borg compact --verbose "${BORG_PROGRESS_ARGS[@]}" "$dir" || die "$dir: failed to compact"
 	touch "$dir/x_last_compact"
 done
 
@@ -135,7 +144,7 @@ RSYNC_PARTIAL=".rsync-partial"
 do_rsync() {
 	rsync \
 		-arAX --fake-super \
-		--info=progress2 \
+		"${RSYNC_PROGRESS_ARGS[@]}" \
 		--human-readable \
 		--delete-after \
 		--partial-dir="$RSYNC_PARTIAL" \

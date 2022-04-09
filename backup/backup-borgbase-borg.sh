@@ -14,7 +14,12 @@ export BORG_PASSCOMMAND="cat /etc/admin/keys/borg"
 
 BORGBASE_NAME="$(hostname --short)/tank/borg"
 BORGBASE_CREATE_ARGS="region:\"eu\", borgVersion:\"V_1_2_X\", appendOnlyKeys:[\"18566\"]"
+
 BORG_INIT_ARGS=( -e repokey-blake2 )
+BORG_PROGRESS_ARGS=()
+if [[ -t 2 ]]; then
+	BORG_PROGRESS_ARGS+=( --progress )
+fi
 
 TIMESTAMP="$(date -Iseconds)"
 TIMESTAMP_UTC="$(TZ=UTC date -d "$TIMESTAMP" -Iseconds)"
@@ -182,7 +187,7 @@ for target in "${BORG_TARGETS[@]}"; do
 		--compression zstd,10 \
 		${BORG_PARAMS[$target]} \
 		--timestamp "$TIMESTAMP_UTC" \
-		--stats --progress --verbose \
+		--stats --verbose "${BORG_PROGRESS_ARGS[@]}" \
 		"$url::$TIMESTAMP" \
 		.
 	) && rc=0 || rc=$?
@@ -212,11 +217,11 @@ for target in "${BORG_TARGETS[@]}"; do
 	log "$target: pruning BorgBase repo $name at $url"
 	borg delete \
 		-a '*.checkpoint' \
-		--verbose --list --stats \
+		--list --stats --verbose \
 		"$url" || exit
 
 	borg prune \
-		--stats --progress --list --verbose \
+		--list --stats --verbose "${BORG_PROGRESS_ARGS[@]}" \
 		${BORG_PRUNE[$target]} \
 		"$url" || exit
 	) && rc=0 || rc=$?
@@ -243,7 +248,7 @@ for target in "${BORG_TARGETS[@]}"; do
 
 	log "$target: compacting BorgBase repo $name at $url"
 	borg compact \
-		--verbose --progress \
+		--verbose "${BORG_PROGRESS_ARGS[@]}" \
 		"$url" \
 	) && rc=0 || rc=$?
 

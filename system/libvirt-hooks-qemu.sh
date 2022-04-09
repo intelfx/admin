@@ -9,8 +9,7 @@ ISOLATE_SLICES=(
 	kthread.slice
 	system.slice
 	user.slice
-	#machine.slice
-	systemd-nspawn@stratofortress.service
+	machine.slice
 )
 
 #

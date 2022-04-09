@@ -10,7 +10,7 @@ identity="/etc/admin/keys/id_rsa"
 
 log "$0: backing up '$host' to '$dest'"
 
-ssh_prep -o PubkeyAcceptedAlgorithms=+ssh-rsa
+ssh_prep -o PubkeyAcceptedAlgorithms=+ssh-rsa -o MACs=+hmac-sha1
 dest="$dest/$addr"
 
 trap "rm -rf '$tempdir'" EXIT

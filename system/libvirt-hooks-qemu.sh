@@ -263,7 +263,7 @@ cpufreq_setup() {
 
 	log "configuring cpufreq governor for pinned CPUs"
 	declare -a cpus
-	readarray -t cpus < <(xq_domain -r '.domain.cputune.vcpupin[]["@cpuset"]')
+	readarray -t cpus < <(xq_domain -r 'try .domain.cputune.vcpupin[]["@cpuset"] catch empty')
 
 	local c
 	for c in "${cpus[@]}"; do
@@ -379,7 +379,7 @@ cgroup_setup() {
 	local new_cpus
 	declare -a new_cpus_l
 	# only consider vCPUs pinned to specific CPUs, not ranges
-	xq_domain -r '.domain.cputune.vcpupin[]["@cpuset"]' | { grep -Ex '[0-9]+' || true; } | readarray -t new_cpus_l
+	xq_domain -r 'try .domain.cputune.vcpupin[]["@cpuset"] catch empty' | { grep -Ex '[0-9]+' || true; } | readarray -t new_cpus_l
 	new_cpus="$(list_or "${new_cpus_l[@]}")"
 	if ! [[ $new_cpus ]]; then
 		return

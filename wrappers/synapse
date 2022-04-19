@@ -5,6 +5,11 @@ import sys
 import yaml
 import argparse
 
+#
+# thin wrapper around `python -m synapse.app.homeserver` that launches
+# a specific worker based on configuration
+#
+
 parser = argparse.ArgumentParser()
 parser.add_argument('--config-path', action='append')
 args, remainder = parser.parse_known_args()
@@ -19,7 +24,7 @@ for f in args.config_path:
 		worker_app = f['worker_app']
 
 if worker_app is None:
-	raise RuntimeError('worker_app not specified')
+	worker_app = 'synapse.app.homeserver'
 
 os.execvp(
 	sys.executable,

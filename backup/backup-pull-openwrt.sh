@@ -5,7 +5,7 @@ cd "${BASH_SOURCE%/*}"
 
 host="$1"
 dest="/mnt/data/Backups/Hosts"
-identity="/etc/admin/keys/id_rsa"
+identity="/etc/admin/keys/id_ed25519"
 
 log "$0: backing up openwrt '$host' to '$dest'"
 

@@ -320,10 +320,16 @@ cpufreq_teardown() {
 }
 
 cgroup_apply() {
+	log "applying CPU isolation"
+
+	STATE_FILE="$STATE_DIR/cpus"
+	if ! [[ -e "$STATE_FILE" ]]; then
+		warn "state file does not exist: $STATE_FILE"
+		return 0
+	fi
+
 	local all_cpus
 	all_cpus="$(< /sys/devices/system/cpu/online)"
-
-	log "cpus: state file:"
 
 	local isolate_cpus
 	local isolate_cpus_l
@@ -419,6 +425,15 @@ if ! [[ -t 2 ]]; then
 fi
 
 eval "$(globaltraps)"
+
+if (( $# > 1 )) && [[ "$1" == "disable" ]]; then
+	die "Sorry, unimplemented: $0 disable ..."
+fi
+
+if (( $# == 1 )) && [[ "$1" == "reapply" ]]; then
+	cgroup_apply
+	exit
+fi
 
 (( $# == 4 )) || die "Bad usage: $0 $* (expected 4 arguments, got $#)"
 GUEST_NAME="$1"

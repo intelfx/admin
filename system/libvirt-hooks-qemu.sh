@@ -331,17 +331,23 @@ cgroup_apply() {
 	local all_cpus
 	all_cpus="$(< /sys/devices/system/cpu/online)"
 
+	local cpu_mask_size
+	cpu_mask_size="$(list_max "$all_cpus")"
+
 	local isolate_cpus
 	local isolate_cpus_l
 	cat "$STATE_FILE" | { grep -Eo '^[0-9,-]+' || true; } | readarray -t isolate_cpus_l
 	declare -p isolate_cpus_l
 	isolate_cpus="$(list_or "${isolate_cpus_l[@]}")"
 
+	local isolate_cpus_mask
+	isolate_cpus_mask="$(list_into_mask "$isolate_cpus" "$cpu_mask_size")"
+
 	local host_cpus
 	host_cpus="$(list_sub "$all_cpus" "$isolate_cpus")"
 
 	local host_cpus_mask
-	host_cpus_mask="$(list_into_mask "$host_cpus" "$(list_max "$all_cpus")")"
+	host_cpus_mask="$(list_into_mask "$host_cpus" "$cpu_mask_size")"
 
 	log "cpus: all=$all_cpus, isolated=$isolate_cpus, host=$host_cpus ($host_cpus_mask)"
 
@@ -357,8 +363,15 @@ cgroup_apply() {
 	if [[ -S "$irqbalance_sock" ]]; then
 		log "cpus: irq: configuring irqbalance at $irqbalance_sock: banning $isolate_cpus (leaving $host_cpus)"
 		socat -,ignoreeof "$irqbalance_sock" <<<"settings cpus $isolate_cpus" >&2
-		socat -,ignoreeof "$irqbalance_sock" <<<"setup" >&2
-		echo >&2
+		# wait until the configuration is actually applied
+		local n=0
+		until { socat -,ignoreeof "$irqbalance_sock" <<<"setup"; echo; } | tee /dev/stderr | grep -E -q "\<BANNED $isolate_cpus_mask\>"; do
+			if (( ++n == 10 )); then
+				err "cpus: irq: waited too long (n=$n) for irqbalance, skipping"
+				break
+			fi
+			sleep 1
+		done
 	fi
 
 	# configure workqueues

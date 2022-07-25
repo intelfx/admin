@@ -5,11 +5,17 @@
 STATE_DIR="/run/libvirt/qemu-hook"
 VCPU_GOVERNOR=ondemand
 VCPU_ONDEMAND_THRESHOLD=10
+# these slices would get isolated via cgroups
 ISOLATE_SLICES=(
 	kthread.slice
 	system.slice
 	user.slice
 	machine.slice
+)
+# these nspawn containers would get their system-cpu.slice adjusted to the new number of CPUs
+ADJUST_MACHINES=(
+	"" # host
+	"stratofortress"
 )
 
 #
@@ -351,6 +357,16 @@ cgroup_apply() {
 
 	log "cpus: all=$all_cpus, isolated=$isolate_cpus, host=$host_cpus ($host_cpus_mask)"
 
+	local host_cpus_count="$(list_count "$host_cpus")"
+	local batch_cpus_count
+	if (( host_cpus_count > 16 )); then
+		batch_cpus_count="$(( host_cpus_count - 2 ))"
+	else
+		batch_cpus_count="$(( host_cpus_count - 1 ))"
+	fi
+	local batch_cpu_quota="$(( batch_cpus_count * 100 ))%"
+	log "cpus: total $host_cpus_count host CPUs, $batch_cpus_count batch CPUs ($batch_cpu_quota quota)"
+
 	# configure cgroup affinity
 	local slice
 	for slice in "${ISOLATE_SLICES[@]}"; do
@@ -385,6 +401,27 @@ cgroup_apply() {
 		else
 			log "cpus: workqueue: cannot configure $wq, skipping"
 		fi
+	done
+
+	# configure machines
+	local slice="system-cpu.slice"
+	local machine
+	declare -a systemctl_args
+	for machine in "${ADJUST_MACHINES[@]}"; do
+		if [[ "$machine" ]]; then
+			if ! systemctl is-active --quiet "systemd-nspawn@${machine}.service"; then
+				continue
+			fi
+			systemctl_args=( -M "$machine" )
+		else
+			systemctl_args=()
+		fi
+
+		if ! systemctl "${systemctl_args[@]}" is-active --quiet "$slice"; then
+			continue
+		fi
+		log "cpus: cgroup: setting ${machine:+$machine/}$slice to $batch_cpu_quota"
+		systemctl "${systemctl_args[@]}" set-property --runtime "$slice" CPUQuota="$batch_cpu_quota"
 	done
 }
 

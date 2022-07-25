@@ -355,8 +355,8 @@ cgroup_apply() {
 	# configure irq affinity
 	local irqbalance_sock=(/run/irqbalance/irqbalance*.sock)
 	if [[ -S "$irqbalance_sock" ]]; then
-		log "cpus: irq: setting irqbalance at $irqbalance_sock to $host_cpus"
-		socat -,ignoreeof "$irqbalance_sock" <<<"settings cpus $host_cpus" >&2
+		log "cpus: irq: configuring irqbalance at $irqbalance_sock: banning $isolate_cpus (leaving $host_cpus)"
+		socat -,ignoreeof "$irqbalance_sock" <<<"settings cpus $isolate_cpus" >&2
 		socat -,ignoreeof "$irqbalance_sock" <<<"setup" >&2
 		echo >&2
 	fi

@@ -389,6 +389,8 @@ cgroup_apply() {
 			fi
 			sleep 1
 		done
+	else
+		warn "cpus: irq: irqbalance is not running or $irqbalance_sock is not a socket"
 	fi
 
 	# configure workqueues
@@ -400,7 +402,7 @@ cgroup_apply() {
 			log "cpus: workqueue: setting $wq to $host_cpus_mask"
 			echo "$host_cpus_mask" >"$wq/cpumask"
 		else
-			log "cpus: workqueue: cannot configure $wq, skipping"
+			warn "cpus: workqueue: cannot configure $wq, skipping"
 		fi
 	done
 

@@ -488,29 +488,40 @@ if (( $# == 1 )) && [[ "$1" == "reapply" ]]; then
 	exit
 fi
 
-(( $# == 4 )) || die "Bad usage: $0 $* (expected 4 arguments, got $#)"
-GUEST_NAME="$1"
-OPERATION="$2"
-STAGE="$3"
+(( $# < 1 )) || die "Bad usage (expected $0 <verb> ...)"
+VERB="$1"
+shift
 
-log "qemu($GUEST_NAME/$OPERATION/$STAGE)"
+case "$VERB" in
+hook)
+	(( $# == 4 )) || die "Bad usage: $0 $* (expected 4 arguments, got $#)"
+	GUEST_NAME="$1"
+	OPERATION="$2"
+	STAGE="$3"
 
-DOMAIN_XML="$(mktemp)"
-ltrap "rm -vf '$DOMAIN_XML'"
-cat >"$DOMAIN_XML"
-xq_domain() {
-	xq "$@" <"$DOMAIN_XML"
-}
+	log "qemu($GUEST_NAME/$OPERATION/$STAGE)"
 
-case "$OPERATION/$STAGE" in
-'prepare/begin')
-	hugepages_setup
-	cpufreq_setup
-	cgroup_setup
+	DOMAIN_XML="$(mktemp)"
+	ltrap "rm -vf '$DOMAIN_XML'"
+	cat >"$DOMAIN_XML"
+	xq_domain() {
+		xq "$@" <"$DOMAIN_XML"
+	}
+
+	case "$OPERATION/$STAGE" in
+	'prepare/begin')
+		hugepages_setup
+		cpufreq_setup
+		cgroup_setup
+		;;
+	'release/end')
+		hugepages_teardown
+		cpufreq_teardown
+		cgroup_teardown
+		;;
+	esac
 	;;
-'release/end')
-	hugepages_teardown
-	cpufreq_teardown
-	cgroup_teardown
+*)
+	die "Unknown verb: $VERB (expected one of 'hook')"
 	;;
 esac

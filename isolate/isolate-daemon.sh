@@ -4,15 +4,12 @@
 
 enable -f /usr/lib/bash/sleep sleep
 
-CGROUP_NAME="$1"
+CGROUP_NAME="kthread.slice"
 TIMEOUT=1
 
 [[ "$CGROUP_NAME" ]] || die "Bad cgroup name (not given)"
 
 CGROUP_PATH="$(realpath -qm /sys/fs/cgroup/$CGROUP_NAME)"
-
-[[ -d "$CGROUP_PATH" ]]                || die "Bad cgroup name (does not exist): $CGROUP_NAME ($CGROUP_PATH)"
-[[ "$CGROUP_PATH" != /sys/fs/cgroup ]] || die "Bad cgroup name (is root): $CGROUP_NAME ($CGROUP_PATH)"
 
 declare -A FAILED_TIDS
 

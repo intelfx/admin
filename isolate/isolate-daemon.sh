@@ -16,6 +16,18 @@ declare -a THREADS
 declare -A FAILED_TIDS
 declare -A SEEN_TIDS
 
+cleanup() {
+	readarray -t THREADS < "$CGROUP_PATH/cgroup.threads"
+	for tid in "${THREADS[@]}"; do
+		if ! echo $tid > "$ROOT_PATH/cgroup.threads" 2>/dev/null; then
+			err "Failed: $tid ($(</proc/$tid/comm))"
+		else
+			log "Moved [$CGROUP_PATH -> $ROOT_PATH]: $tid ($(</proc/$tid/comm))"
+		fi
+	done
+}
+trap cleanup EXIT
+
 
 while :; do
 	if ! [[ -d "$CGROUP_PATH" ]]; then

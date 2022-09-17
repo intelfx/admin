@@ -377,8 +377,9 @@ cgroup_apply() {
 	# configure irq affinity
 	local irqbalance_sock=(/run/irqbalance/irqbalance*.sock)
 	if [[ -S "$irqbalance_sock" ]]; then
-		log "cpus: irq: configuring irqbalance at $irqbalance_sock: banning $isolate_cpus (leaving $host_cpus)"
-		socat -,ignoreeof "$irqbalance_sock" <<<"settings cpus $isolate_cpus" >&2
+		log "cpus: irq: configuring irqbalance at $irqbalance_sock: banning ${isolate_cpus:-(empty)} (mask ${isolate_cpus_mask}) (leaving $host_cpus)"
+		# HACK: irqbalance interprets an empty argument as CPU 0, but seems to interpret a literal "-" as an empty list
+		socat -,ignoreeof "$irqbalance_sock" <<<"settings cpus ${isolate_cpus:--}" >&2
 		# wait until the configuration is actually applied
 		local n=0
 		until { socat -,ignoreeof "$irqbalance_sock" <<<"setup"; echo; } | tee /dev/stderr | grep -E -q "\<BANNED $isolate_cpus_mask\>"; do

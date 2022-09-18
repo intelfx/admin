@@ -488,7 +488,7 @@ if (( $# == 1 )) && [[ "$1" == "reapply" ]]; then
 	exit
 fi
 
-(( $# < 1 )) || die "Bad usage (expected $0 <verb> ...)"
+(( $# >= 1 )) || die "Bad usage (expected $0 <verb> ...)"
 VERB="$1"
 shift
 

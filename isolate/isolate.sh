@@ -337,14 +337,20 @@ cgroup_apply() {
 	local all_cpus
 	all_cpus="$(< /sys/devices/system/cpu/online)"
 
+	local isol_cpus nohz_cpus
+	# isolcpus=
+	isol_cpus="$(< /sys/devices/system/cpu/isolated)"
+	# nohz_full=
+	nohz_cpus="$(< /sys/devices/system/cpu/nohz_full)"
+
 	local cpu_mask_size
 	cpu_mask_size="$(list_max "$all_cpus")"
 
-	local isolate_cpus
-	local isolate_cpus_l
-	cat "$STATE_FILE" | { grep -Eo '^[0-9,-]+' || true; } | readarray -t isolate_cpus_l
-	declare -p isolate_cpus_l
-	isolate_cpus="$(list_or "${isolate_cpus_l[@]}")"
+	local guest_cpus
+	local guest_cpus_l
+	cat "$STATE_FILE" | { grep -Eo '^[0-9,-]+' || true; } | readarray -t guest_cpus_l
+	declare -p guest_cpus_l
+	isolate_cpus="$(list_or "${guest_cpus_l[@]}" "$isol_cpus" "$nohz_cpus")"
 
 	local isolate_cpus_mask
 	isolate_cpus_mask="$(list_into_mask "$isolate_cpus" "$cpu_mask_size")"

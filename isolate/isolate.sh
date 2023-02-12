@@ -470,7 +470,7 @@ cgroup_teardown() {
 		return 0
 	fi
 
-	if ! grep -F "guest=$GUEST_NAME" "$STATE_FILE"; then
+	if ! grep -qF "guest=$GUEST_NAME" "$STATE_FILE"; then
 		return 0
 	fi
 

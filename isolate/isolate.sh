@@ -253,7 +253,8 @@ cpufreq_rollback() {
 
 		log "writing $governor_file = $governor_old"
 		if ! echo "$governor_old" >"$governor_file"; then
-			die "writing $governor_file: failure"
+			err "writing $governor_file (rollback): failure"
+			return
 		fi
 	done
 
@@ -283,16 +284,21 @@ cpufreq_setup() {
 	local cpus_list="${cpus[*]}"
 	unset IFS
 
-	log "configuring cpufreq governor: cpus=${cpus_list} governor=${governor_new}"
+	log "configuring cpufreq governor: cpus=${cpus_list} governor=${VCPU_GOVERNOR}"
 	declare -A governor_state
 	ltrap 'cpufreq_rollback'
-	local c governor_file governor_new="$VCPU_GOVERNOR"
+	local c governor_file
 	for c in "${cpus[@]}"; do
 		governor_file="/sys/devices/system/cpu/cpu$c/cpufreq/scaling_governor"
-		log "writing $governor_file = $governor_new"
-		governor_state[$c]="$(< $governor_file)"
-		if ! echo "$governor_new" >"$governor_file"; then
-			die "writing $governor_file: failure"
+		if ! governor_state[$c]="$(< $governor_file)"; then
+			err "reading $governor_file: failure"
+			unset governor_state[$c]
+			return
+		fi
+		log "writing $governor_file = $VCPU_GOVERNOR"
+		if ! echo "$VCPU_GOVERNOR" >"$governor_file"; then
+			err "writing $governor_file: failure"
+			return
 		fi
 	done
 	log "configuring cpufreq governor: configured ${#cpus[@]} cpus"

@@ -348,7 +348,7 @@ cgroup_apply() {
 
 	local guest_cpus
 	local guest_cpus_l
-	cat "$STATE_FILE" | { grep -Eo '^[0-9,-]+' || true; } | readarray -t guest_cpus_l
+	cat "$STATE_FILE" | { grep -vF 'masked=1' || true; } | { grep -Eo '^[0-9,-]+' || true; } | readarray -t guest_cpus_l
 	declare -p guest_cpus_l
 	isolate_cpus="$(list_or "${guest_cpus_l[@]}" "$isol_cpus" "$nohz_cpus")"
 
@@ -479,6 +479,53 @@ cgroup_teardown() {
 	cgroup_apply
 }
 
+cgroup_unisolate() {
+	local LIBSH_LOG_PREFIX="qemu::cgroup_unisolate(${GUESTS[*]})"
+
+	STATE_FILE="$STATE_DIR/cpus"
+	if ! [[ -e "$STATE_FILE" ]]; then
+		warn "state file does not exist: $STATE_FILE"
+		break
+	fi
+
+	local guest
+	for guest in "${GUESTS[@]}"; do
+		log "disabling isolation for guest $guest"
+		if ! grep -qF "guest=$guest" "$STATE_FILE"; then
+			continue
+		fi
+		sed -r "/guest=$guest/{ s/( masked=[^ ]+)//g; s/$/ masked=1/ }" -i "$STATE_FILE"
+	done
+
+	cgroup_apply
+}
+
+cgroup_reisolate() {
+	local LIBSH_LOG_PREFIX="qemu::cgroup_reisolate(${GUESTS[*]})"
+
+	STATE_FILE="$STATE_DIR/cpus"
+	if ! [[ -e "$STATE_FILE" ]]; then
+		warn "state file does not exist: $STATE_FILE"
+		break
+	fi
+
+	local guest
+	for guest in "${GUESTS[@]}"; do
+		log "restoring isolation for guest $guest"
+		if ! grep -qF "guest=$guest" "$STATE_FILE"; then
+			continue
+		fi
+		sed -r "/guest=$guest/{ s/( masked=[^ ]+)//g }" -i "$STATE_FILE"
+	done
+
+	if ! (( ${#GUESTS[@]} )); then
+		log "restoring isolation for all guests"
+		sed -r "s/( masked=[^ ]+)//g" -i "$STATE_FILE"
+	fi
+
+	cgroup_apply
+}
+
 if ! [[ -t 2 ]]; then
 	exec 2> >(systemd-cat -t libvirt-hook)
 fi
@@ -526,6 +573,14 @@ hook)
 		cgroup_teardown
 		;;
 	esac
+	;;
+unisolate)
+	GUESTS=( "$@" )
+	cgroup_unisolate
+	;;
+reisolate)
+	GUESTS=( "$@" )
+	cgroup_reisolate
 	;;
 *)
 	die "Unknown verb: $VERB (expected one of 'hook')"

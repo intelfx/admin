@@ -281,6 +281,10 @@ Loop {
 		RegExMatch(status, "O)^Current Progress:  ([0-9]{1,3})%$", match)
 		WriteStatus("progress=" . match.Value(1), 0)
 	}
+	else if (status ~= "^Deleted '" . Basename(to_file) . "'")
+	{
+		WriteStatus("deleting source", 0)
+	}
 	else if (status == "Success")
 		WriteSuccess()
 	else if (status == "Cancelled")

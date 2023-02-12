@@ -135,3 +135,5 @@ for file in "${macrium_fulls[@]}"; do
 	done
 
 done
+
+xinit /usr/bin/env LC_ALL=C WINEPREFIX=/etc/admin/wineprefix /usr/bin/wineboot -k -- /usr/bin/Xvnc :9 -auth /etc/admin/Xauthority

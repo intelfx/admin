@@ -1,1 +1,0 @@
-../../dehydrated-playbook-record.sh

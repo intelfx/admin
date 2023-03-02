@@ -6,7 +6,7 @@ cd "${BASH_SOURCE%/*}"
 host="$1"
 dest="/mnt/data/Backups/Hosts"
 password="$(< /etc/admin/keys/backup-mikrotik )"
-identity="/etc/admin/keys/id_rsa"
+identity="/etc/admin/keys/id_rsa_2048"
 
 log "$0: backing up '$host' to '$dest'"
 

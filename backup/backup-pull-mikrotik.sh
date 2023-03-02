@@ -10,8 +10,11 @@ identity="/etc/admin/keys/id_rsa"
 
 log "$0: backing up '$host' to '$dest'"
 
-ssh_prep -o PubkeyAcceptedAlgorithms=+ssh-rsa -o MACs=+hmac-sha1
+ssh_prep_parse_host
 dest="$dest/$addr"
+known_hosts="$dest/known_hosts"
+
+ssh_prep -o PubkeyAcceptedAlgorithms=+ssh-rsa -o MACs=+hmac-sha1
 
 trap "rm -rf '$tempdir'" EXIT
 tempdir="$(mktemp -d)"
@@ -31,5 +34,4 @@ EOF
 	#get auto-backup-verbose.rsc "$host_identity-verbose.rsc"
 
 mkdir -p "$dest"
-rm -rf "$dest"/*
-rsync -rt --delete "$tempdir"/ "$dest"/
+rsync -rt --chmod=ugo=rwX "$tempdir"/ "$dest"/

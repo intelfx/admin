@@ -164,10 +164,10 @@ hook -EP '(deploy|unchanged)_cert' stratofortress.nexus.i.intelfx.name \
 	-- deploy_localhost
 hook -EP '(deploy|unchanged)_cert' sentinel.nexus.i.intelfx.name \
 	-- deploy_pikvm root@sentinel.nexus.i.intelfx.name /etc/admin/keys/id_ed25519
-hook -EP '(deploy|unchanged)_cert' router.ditaeon.i.intelfx.name \
-	-- deploy_openwrt root@router.ditaeon.i.intelfx.name /etc/admin/keys/id_ed25519
-hook -EP '(deploy|unchanged)_cert' router.sovereign.i.intelfx.name \
-	-- deploy_routeros admin@router.sovereign.i.intelfx.name /etc/admin/keys/id_rsa
+#hook -EP '(deploy|unchanged)_cert' router.ditaeon.i.intelfx.name \
+#	-- deploy_openwrt root@router.ditaeon.i.intelfx.name /etc/admin/keys/id_ed25519
+#hook -EP '(deploy|unchanged)_cert' router.sovereign.i.intelfx.name \
+#	-- deploy_routeros admin@router.sovereign.i.intelfx.name /etc/admin/keys/id_rsa
 hook -EP '(deploy|unchanged)_cert' router.nexus.i.intelfx.name \
 	-- deploy_openwrt root@router.nexus.i.intelfx.name /etc/admin/keys/id_ed25519
 

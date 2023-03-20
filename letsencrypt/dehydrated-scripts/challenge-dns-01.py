@@ -121,7 +121,8 @@ parser.add_argument('action', choices=actions.keys())
 parser.add_argument('domain')
 parser.add_argument('challenge_token')
 parser.add_argument('dns_token')
-args = parser.parse_args(sys.argv[0:0] + [ '--' ] + sys.argv[1:])
+parser.add_argument('--config', type=argparse.FileType('r'))  # default='/etc/admin/dns/dns.yaml'
+args = parser.parse_args()
 
 lib.configure_logging(prefix=f'DNS-01: {args.domain}: ')
 
@@ -130,7 +131,8 @@ lib.configure_logging(prefix=f'DNS-01: {args.domain}: ')
 # load config
 #
 
-config = yaml.load(open('/etc/admin/dns/dns.yaml'), Loader=yaml.Loader)
+with args.config as f:
+	config = yaml.load(f, Loader=yaml.Loader)
 config = lib.attrdict(config)
 
 

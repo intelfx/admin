@@ -156,9 +156,10 @@ if [[ $1 == playbook ]]; then
 	exit
 fi
 
+hookdir="${BASH_SOURCE%/*}"
 
 hook -E '(deploy|clean)_challenge' '.*intelfx\.name' \
-	-- ./challenge-dns-01.py --config /etc/admin/dns/intelfx.name.yaml
+	-- "$hookdir"/dehydrated-scripts/challenge-dns-01.py --config /etc/admin/dns/intelfx.name.yaml
 hook -EP '(deploy|unchanged)_cert' stratofortress.nexus.i.intelfx.name \
 	-- deploy_localhost
 hook -EP '(deploy|unchanged)_cert' sentinel.nexus.i.intelfx.name \

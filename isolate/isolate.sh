@@ -3,7 +3,7 @@
 . /etc/admin/scripts/lib/lib.sh || exit 1
 
 STATE_DIR="/run/libvirt/qemu-hook"
-VCPU_GOVERNOR=ondemand
+VCPU_GOVERNOR=performance
 VCPU_ONDEMAND_THRESHOLD=10
 # these slices would get isolated via cgroups
 ISOLATE_SLICES=(

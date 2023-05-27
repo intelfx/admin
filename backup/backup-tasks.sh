@@ -40,6 +40,7 @@ trap log_tasks EXIT
 
 run_task operator ./backup-pull-openwrt.sh root@router.nexus.i.intelfx.name
 run_task operator ./backup-pull-mikrotik.sh admin@chr.nexus.i.intelfx.name
+run_task operator ./backup-pull-mikrotik.sh admin@router.exile.i.intelfx.name
 run_task root     ./backup-borgbase-borg.sh
 run_task operator ./backup-borgbase-mirror.sh
 

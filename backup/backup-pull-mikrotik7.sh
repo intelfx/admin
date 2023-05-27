@@ -21,15 +21,15 @@ tempdir="$(mktemp -d)"
 
 do_ssh <<-EOF
 	/system backup save password="$password" name="auto-backup"
-	/export compact file="auto-backup.rsc"
-	/export verbose file="auto-backup-verbose.rsc"
+	/export compact file="auto-export.rsc"
+	/export verbose file="auto-export-verbose.rsc"
 EOF
 
 do_sftp <<-EOF
 	lcd "$tempdir"
 	get auto-backup.backup
-	get auto-backup.rsc "$host_identity.rsc"
-	get auto-backup-verbose.rsc "$host_identity-verbose.rsc"
+	get auto-export.rsc "auto-export.rsc"
+	get auto-export-verbose.rsc "auto-export-verbose.rsc"
 	rm auto-backup*
 EOF
 

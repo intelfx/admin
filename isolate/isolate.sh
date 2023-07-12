@@ -22,6 +22,20 @@ ADJUST_MACHINES=(
 # hugepage support
 #
 
+get_vfio_devices() {
+	xq_domain -r '
+		def unhex: if test("^0x") then .[2:] else error("malformed hex: \(.)") end;
+		def format_pci: "\(."@domain"):\(."@bus"):\(."@slot").\(."@function")";
+		.
+		| .domain.devices.hostdev // empty
+		| map(select(."@type" == "pci" and .driver."@name" == "vfio"))
+		| map(.source.address)
+		| map(map_values(unhex))
+		| map(format_pci)
+		| .[]
+	'
+}
+
 mem_decode_qemu() {
 	local mem_value="$1" mem_unit="$2"
 	log "domain memory: value=$mem_value unit=$mem_unit"
@@ -584,11 +598,59 @@ hook)
 		hugepages_setup
 		cpufreq_setup
 		cgroup_setup
+
+		# HACK
+		STATE_FILE="$STATE_DIR/nvidia_guests"
+		if [[ -e "$STATE_FILE" ]]
+		then eval "$(< "$STATE_FILE" )"
+		else declare -A nvidia_guests
+		fi
+		nvidia_unbind=0
+
+		get_vfio_devices | while read dev; do
+			if [[ -e "/sys/bus/pci/drivers/nvidia/$dev" ]]; then
+				log "setup($GUEST_NAME): hack: nvidia device $dev"
+				nvidia_guests[$dev]=1
+				nvidia_unbind=1
+			fi
+		done
+
+		mkdir -p "${STATE_FILE%/*}"
+		declare -p nvidia_guests >"$STATE_FILE"
+		if (( nvidia_unbind )); then
+			log "setup($GUEST_NAME): hack: unloading nvidia modules"
+			rmmod nvidia_uvm ||:
+			rmmod nvidia_drm ||:
+		fi
 		;;
 	'release/end')
 		hugepages_teardown
 		cpufreq_teardown
 		cgroup_teardown
+
+		# HACK
+		STATE_FILE="$STATE_DIR/nvidia_guests"
+		if [[ -e "$STATE_FILE" ]]
+		then eval "$(< "$STATE_FILE" )"
+		else warn "release($GUEST_NAME): hack: state file does not exist: $STATE_FILE"; declare -A nvidia_guests
+		fi
+		nvidia_rebind=0
+
+		get_vfio_devices | while read dev; do
+			if [[ ${nvidia_guests[$dev]} ]]; then
+				log "release($GUEST_NAME): hack: nvidia device $dev"
+				unset nvidia_guests[$dev]
+				nvidia_rebind=1
+			fi
+		done
+
+		mkdir -p "${STATE_FILE%/*}"
+		declare -p nvidia_guests >"$STATE_FILE"
+		if (( nvidia_rebind && ! ${#nvidia_guests[@]} )); then
+			log "release($GUEST_NAME): hack: reloading nvidia modules"
+			modprobe nvidia_drm ||:
+			modprobe nvidia_uvm ||:
+		fi
 		;;
 	esac
 	;;

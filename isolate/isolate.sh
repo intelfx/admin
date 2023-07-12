@@ -268,6 +268,12 @@ cpufreq_setup() {
 	STATE_FILE="$STATE_DIR/cpufreq/$GUEST_NAME"
 	rm -f "$STATE_FILE"
 
+	# HACK
+	if [[ $GUEST_NAME == *-nopin ]]; then
+		warn "nopin: not configuring cpufreq governor"
+		return
+	fi
+
 	log "configuring cpufreq governor for pinned CPUs"
 	declare -a cpus
 	readarray -t cpus < <(xq_domain -r 'try .domain.cputune.vcpupin[]["@cpuset"] catch empty')
@@ -444,6 +450,12 @@ cgroup_setup() {
 	eval "$(ltraps)"
 
 	local LIBSH_LOG_PREFIX="qemu::cgroup_setup($GUEST_NAME)"
+
+	# HACK
+	if [[ $GUEST_NAME == *-nopin ]]; then
+		warn "nopin: not isolating pinned CPUs"
+		return
+	fi
 
 	log "isolating pinned CPUs"
 

@@ -587,7 +587,7 @@ hook)
 	log "qemu($GUEST_NAME/$OPERATION/$STAGE)"
 
 	DOMAIN_XML="$(mktemp)"
-	ltrap "rm -vf '$DOMAIN_XML'"
+	ltrap "rm -f '$DOMAIN_XML' >&2"
 	cat >"$DOMAIN_XML"
 	xq_domain() {
 		xq "$@" <"$DOMAIN_XML"

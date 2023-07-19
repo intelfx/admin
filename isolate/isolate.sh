@@ -23,7 +23,7 @@ ADJUST_MACHINES=(
 #
 
 get_vfio_devices() {
-	xq_domain -r '
+	xq_domain -r --xml-force-list=hostdev '
 		def unhex: if test("^0x") then .[2:] else error("malformed hex: \(.)") end;
 		def format_pci: "\(."@domain"):\(."@bus"):\(."@slot").\(."@function")";
 		.

@@ -590,7 +590,7 @@ hook)
 	ltrap "rm -f '$DOMAIN_XML' >&2"
 	cat >"$DOMAIN_XML"
 	xq_domain() {
-		xq "$@" <"$DOMAIN_XML"
+		xq "$@" "$DOMAIN_XML"
 	}
 
 	case "$OPERATION/$STAGE" in

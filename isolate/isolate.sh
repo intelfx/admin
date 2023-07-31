@@ -36,6 +36,21 @@ get_vfio_devices() {
 	'
 }
 
+is_scratch_vm() {
+	[[ "$GUEST_NAME" == scratch-* ]]
+}
+
+get_scratch_disks() {
+	xq_domain -r --xml-force-list=disk '
+		.
+		| .domain.devices.disk // empty
+		| map(select(."@device" == "disk" and ."@type" == "file"))
+		| map(select(.source."@file" | sub(".+/"; "") | sub("\\.[^.]+$"; "") | (test("-tmp$") or test("^tmp-"))))
+		| map(.source."@file")
+		| .[]
+	'
+}
+
 mem_decode_qemu() {
 	local mem_value="$1" mem_unit="$2"
 	log "domain memory: value=$mem_value unit=$mem_unit"
@@ -558,6 +573,23 @@ cgroup_reisolate() {
 	cgroup_apply
 }
 
+scratch_disks_setup() {
+	local LIBSH_LOG_PREFIX="qemu::scratch_setup($GUEST_NAME)"
+	local file size
+
+	if ! is_scratch_vm; then
+		return 0
+	fi
+
+	get_scratch_disks | while read file; do
+		size="$(stat -c '%s' "$file")" || continue
+
+		log "scratch: clearing $file"
+		truncate -s 0       "$file"
+		truncate -s "$size" "$file"
+	done
+}
+
 if ! [[ -t 2 ]]; then
 	exec 2> >(systemd-cat -t libvirt-hook)
 fi
@@ -599,6 +631,7 @@ hook)
 		hugepages_setup
 		cpufreq_setup
 		cgroup_setup
+		scratch_disks_setup
 
 		# HACK
 		STATE_FILE="$STATE_DIR/nvidia_guests"

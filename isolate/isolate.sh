@@ -17,6 +17,9 @@ ADJUST_MACHINES=(
 	"" # host
 	"stratofortress"
 )
+ZRAMCTL_ARGS=(
+	--algorithm lz4
+)
 
 #
 # hugepage support
@@ -47,6 +50,17 @@ get_scratch_disks() {
 		| map(select(."@device" == "disk" and ."@type" == "file"))
 		| map(select(.source."@file" | sub(".+/"; "") | sub("\\.[^.]+$"; "") | (test("-tmp$") or test("^tmp-"))))
 		| map(.source."@file")
+		| .[]
+	'
+}
+
+get_zram_disks() {
+	xq_domain -r --xml-force-list=disk '
+		.
+		| .domain.devices.disk // empty
+		| map(select(."@device" == "disk" and ."@type" == "block"))
+		| map(select(.source."@dev" | test("^/dev/zram[0-9/-]")))
+		| map(.source."@dev")
 		| .[]
 	'
 }
@@ -590,6 +604,39 @@ scratch_disks_setup() {
 	done
 }
 
+zram_disks_setup() {
+	local LIBSH_LOG_PREFIX="qemu::zram_setup($GUEST_NAME)"
+	local file size target
+
+	get_zram_disks | while read file; do
+		target="$(realpath -qm "$file")"
+
+		if [[ "${file%.*}" =~ ^/dev/zram[/-]([0-9]+[BbKkMmGgTt])-.+$ ]] ||
+		   [[ "${file%.*}" =~ ^/dev/zram[/-].+-([0-9]+[BbKkMmGgTt])$ ]]; then
+			size="${BASH_REMATCH[1]}"
+		elif [[ "$target" =~ ^/dev/zram[0-9]+$ && -b "$target" ]]; then
+			size="$(zramctl --raw --noheadings -o DISKSIZE "$target")"
+		elif [[ "$target" =~ ^/dev/zram[0-9]+$ ]]; then
+			err "zram: cannot configure $file that does not yet exist"
+			continue
+		else
+			err "zram: do not know how to configure $file"
+			continue
+		fi
+
+		if [[ -b "$target" ]] && is_scratch_vm; then
+			log "zram: clearing $file to $size"
+			zramctl "${ZRAMCTL_ARGS[@]}" --size "$size" "$target"
+		elif ! [[ -b "$target" ]]; then
+			log "zram: configuring $file as zram disk of $size"
+			zramctl "${ZRAMCTL_ARGS[@]}" --size "$size" --find | read target
+			mkdir -pv "$(dirname "$file")"
+			ln -svf "$target" -T "$file"
+		# else nothing
+		fi
+	done
+}
+
 if ! [[ -t 2 ]]; then
 	exec 2> >(systemd-cat -t libvirt-hook)
 fi
@@ -632,6 +679,7 @@ hook)
 		cpufreq_setup
 		cgroup_setup
 		scratch_disks_setup
+		zram_disks_setup
 
 		# HACK
 		STATE_FILE="$STATE_DIR/nvidia_guests"

@@ -517,7 +517,7 @@ cgroup_unisolate() {
 	STATE_FILE="$STATE_DIR/cpus"
 	if ! [[ -e "$STATE_FILE" ]]; then
 		warn "state file does not exist: $STATE_FILE"
-		break
+		return 0
 	fi
 
 	local guest
@@ -538,7 +538,7 @@ cgroup_reisolate() {
 	STATE_FILE="$STATE_DIR/cpus"
 	if ! [[ -e "$STATE_FILE" ]]; then
 		warn "state file does not exist: $STATE_FILE"
-		break
+		return 0
 	fi
 
 	local guest

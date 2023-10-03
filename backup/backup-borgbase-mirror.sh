@@ -28,13 +28,21 @@ fi
 NEED_RERUN=0
 
 BORG_COMPACT=1
+BORG_COMPACT_FORCE=0
 ARGS=()
 
 for arg; do
 	case "$arg" in
 	-Xno-compact)
-		BORG_COMPACT=
+		BORG_COMPACT=0
 		log "Disabling automatic compaction of Borg repositories"
+		;;
+	-Xforce-compact)
+		BORG_COMPACT_FORCE=1
+		log "Forcing compaction of Borg repositories"
+		;;
+	-X*)
+		die "Unrecognized: $arg"
 		;;
 	*)
 		ARGS+=( "$arg" )
@@ -131,7 +139,7 @@ for dir in "${targets_borg_p[@]}"; do
 		continue
 	fi
 
-	if find "$dir" -maxdepth 1 -mindepth 1 -type f -name "x_last_compact" -newermt '1 week ago' | grep -q .; then
+	if ! (( BORG_COMPACT_FORCE )) && find "$dir" -maxdepth 1 -mindepth 1 -type f -name "x_last_compact" -newermt '1 week ago' | grep -q .; then
 		log "$dir: Borg repository was compacted less than 1 week ago, skipping"
 		continue
 	fi

@@ -135,7 +135,12 @@ for dir in "${targets_borg_p[@]}"; do
 		log "$dir: Borg repository was compacted less than 1 week ago, skipping"
 		continue
 	fi
-	borg compact --verbose "${BORG_PROGRESS_ARGS[@]}" "$dir" || die "$dir: failed to compact"
+	if ! borg compact --verbose "${BORG_PROGRESS_ARGS[@]}" "$dir"; then
+	       log "$dir: failed to compact, skipping and scheduling a rerun"
+	       echo "$dir" >>"$exclusions"
+	       NEED_RERUN=1
+	       continue
+	fi
 	touch "$dir/x_last_compact"
 done
 

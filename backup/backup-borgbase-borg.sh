@@ -8,6 +8,10 @@ SCRIPT_DIR="$(realpath -s "${BASH_SOURCE%/*}")"
 cd "$SCRIPT_DIR"
 . lib/lib.sh || exit 1
 
+#
+# constants and setup
+#
+
 LOCAL_PATH=/mnt/data
 export BORG_BASE_DIR="/home/operator"
 export BORG_RSH="ssh -oBatchMode=yes -oIdentitiesOnly=yes -i/etc/admin/keys/id_ed25519"
@@ -26,15 +30,58 @@ TIMESTAMP="$(date -Iseconds)"
 TIMESTAMP_UTC="$(TZ=UTC date -d "$TIMESTAMP" -Iseconds)"
 TIMESTAMP_UTC="${TIMESTAMP_UTC%+00:00}"
 
-blacklist="$(mktemp)"
-inclusions="$(mktemp)"
-exclusions="$(mktemp)"
-patterns="$(mktemp)"
+# easiest this way, the rest of the script hardcodes "."
+cd "$LOCAL_PATH"
 
-cleanup() {
-	rm -f "$blacklist" "$inclusions" "$exclusions" "$patterns"
+BORG_TARGETS=(
+	.
+	Backups/SMB
+)
+
+declare -A BORG_PARAMS=(
+	[.]="--chunker-params buzhash,10,23,20,4095"
+	[Backups/SMB]="--chunker-params buzhash,10,23,16,4095"
+)
+
+declare -A BORG_PRUNE=(
+	[.]="--keep-last 1 --keep-daily 7 --keep-weekly 4 --keep-monthly -1"
+	[Backups/SMB]="--keep-last 1 --keep-monthly -1"
+)
+
+declare -A BORG_URLS
+
+#
+# arguments
+#
+
+_usage() {
+	cat <<EOF
+Usage: $0 [--create] [--prune] [--compact]
+Default is $0 --create --prune --compact.
+EOF
 }
-trap cleanup TERM HUP INT EXIT
+
+if (( $# )); then
+	declare -A ARGS=(
+		[--create]=OP_CREATE
+		[--prune]=OP_PRUNE
+		[--compact]=OP_COMPACT
+	)
+	if ! parse_args ARGS "$@"; then
+		usage ""
+	fi
+	if ! (( OP_CREATE || OP_PRUNE || OP_COMPACT )); then
+		usage "No action specified"
+	fi
+else
+	OP_CREATE=1
+	OP_PRUNE=1
+	OP_COMPACT=1
+fi
+
+#
+# functions
+#
 
 borgbase_name_by_target() {
 	local target="$1"
@@ -63,50 +110,25 @@ borgbase_wait() {
 
 }
 
-# easiest this way, the rest of the script hardcodes "."
-cd "$LOCAL_PATH"
+#
+# setup
+#
 
-BORG_TARGETS=(
-	.
-	Backups/SMB
-)
+blacklist="$(mktemp)"
+inclusions="$(mktemp)"
+exclusions="$(mktemp)"
+patterns="$(mktemp)"
 
-declare -A BORG_PARAMS=(
-	[.]="--chunker-params buzhash,10,23,20,4095"
-	[Backups/SMB]="--chunker-params buzhash,10,23,16,4095"
-)
+cleanup() {
+	rm -f "$blacklist" "$inclusions" "$exclusions" "$patterns"
+}
+trap cleanup TERM HUP INT EXIT
 
-declare -A BORG_PRUNE=(
-	[.]="--keep-last 1 --keep-daily 7 --keep-weekly 4 --keep-monthly -1"
-	[Backups/SMB]="--keep-last 1 --keep-monthly -1"
-)
+#
+# main
+#
 
-declare -A BORG_URLS
-
-OP_CREATE=1
-OP_PRUNE=1
-OP_COMPACT=0
-
-if (( $# > 0 )); then
-	OP_CREATE=0
-	OP_PRUNE=0
-	OP_COMPACT=0
-
-	for arg; do
-		case "$arg" in
-		--create)
-			OP_CREATE=1 ;;
-		--prune)
-			OP_PRUNE=1 ;;
-		--compact)
-			OP_COMPACT=1 ;;
-		*)
-			die "Invalid argument: $arg (expected --create, --prune or --compact)" ;;
-		esac
-	done
-fi
-
-exitcode=0
+RC=0
 
 for target in "${BORG_TARGETS[@]}"; do
 	name="$(borgbase_name_by_target "$target")"
@@ -197,7 +219,7 @@ for target in "${BORG_TARGETS[@]}"; do
 		warn "$target: minor problems when backing up to $url, continuing"
 	elif (( rc > 1 )); then
 		err "$target: failed to back up to $url"
-		(( ++exitcode ))
+		RC=1
 	fi
 
 	fi
@@ -211,7 +233,6 @@ for target in "${BORG_TARGETS[@]}"; do
 	url="${BORG_URLS[$target]}"
 	if ! [[ $url ]]; then
 		err "$target: URL not registered during backup, check prune configuration"
-		(( ++exitcode ))
 		exit 1
 	fi
 
@@ -229,7 +250,7 @@ for target in "${BORG_TARGETS[@]}"; do
 
 	if (( rc > 0 )); then
 		err "$target: failed to prune $url"
-		(( ++exitcode ))
+		RC=1
 	fi
 done
 
@@ -243,7 +264,6 @@ for target in "${BORG_TARGETS[@]}"; do
 	url="${BORG_URLS[$target]}"
 	if ! [[ $url ]]; then
 		err "$target: URL not registered during backup, check prune configuration"
-		(( ++exitcode ))
 		exit 1
 	fi
 
@@ -255,10 +275,10 @@ for target in "${BORG_TARGETS[@]}"; do
 
 	if (( rc > 0 )); then
 		err "$target: failed to compact $url"
-		(( ++exitcode ))
+		RC=1
 	fi
 done
 
 fi
 
-exit $exitcode
+exit $RC

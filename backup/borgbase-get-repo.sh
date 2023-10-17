@@ -6,17 +6,42 @@ shopt -s lastpipe
 cd "${BASH_SOURCE%/*}"
 . lib/lib.sh || exit 1
 
+#
+# constants
+#
+
 BORGBASE_API="https://api.borgbase.com/graphql"
 BORGBASE_KEY="/etc/admin/keys/borgbase"
 
+#
+# arguments
+#
+
+_usage() {
+	cat <<EOF
+Usage: $0 <REPO-NAME> <REPOADD-PARAMS>
+
+Returns a SSH URL of a BorgBase repository with given name, potentially
+creating it.
+
+Arguments:
+	REPO-NAME	Name of BorgBase repository to acquire
+	REPO-ADD-PARAMS	Parameters for BorgBase repoAdd API
+			(jq syntax, without the top-level object)
+EOF
+}
+
 if ! (( $# == 2 )); then
-	die "Expected 2 argument, got $# (usage: $0 <repo name> <repoAdd arguments>)"
+	usage "Expected 2 arguments, got $#"
 fi
 REPO_NAME="$1"
 REPO_ADD_ARGS="$2"
-BORG_INIT=( borg init -e repokey-blake2 )
 
-call_borgbase() {
+#
+# functions
+#
+
+borgbase_call() {
 	local type="$1"
 	local graphql="$2"
 	local json="$(jq -c -n --arg type "$type" --arg graphql "$graphql" '{ ($type): $graphql }')"
@@ -69,19 +94,21 @@ id_to_url() {
 	echo "$1@$1.repo.borgbase.com"
 }
 
-#call_borgbase "query" "{ repoList{id, name} }" | jq >&2
+#
+# main
+#
 
-call_borgbase "query" "{ repoList{id, name} }" | jq -r -e '.data.repoList[] | "\(.id)\t\(.name)"' | while IFS=$'\t' read id name; do
+borgbase_call "query" "{ repoList{id, name} }" | jq -r -e '.data.repoList[] | "\(.id)\t\(.name)"' | while IFS=$'\t' read id name; do
 	if [[ "$REPO_NAME" == "$name" ]]; then
 		id_to_url "$id"
 		exit 0
 	fi
 done
 
-call_borgbase "query" "mutation { repoAdd(name:\"$REPO_NAME\", quotaEnabled: false, alertDays: 0, $REPO_ADD_ARGS) { repoAdded{id} } }" | jq -r -e '.data.repoAdd.repoAdded.id' | while read id; do
+borgbase_call "query" "mutation { repoAdd(name:\"$REPO_NAME\", quotaEnabled: false, alertDays: 0, $REPO_ADD_ARGS) { repoAdded{id} } }" | jq -r -e '.data.repoAdd.repoAdded.id' | while read id; do
 	id_to_url "$id"
 	exit 0
 done
 
-err "Could not get or create repo"
+err "Failed to get or create BorgBase repo \"$REPO_NAME\'"
 exit 1

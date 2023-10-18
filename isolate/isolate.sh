@@ -12,6 +12,16 @@ ISOLATE_HOST_SLICES=(
 	user.slice
 	machine.slice
 )
+# these slices must be used by isolated guests in domain XML, as follows:
+#   <domain>
+#     <resource>
+#       <partition>/priority</partition>
+#     </resource>
+#   </domain>
+# (if a guest uses one of these slices, it will be isolated)
+ISOLATE_TARGET_SLICES=(
+	priority.slice
+)
 # these nspawn containers would get their system-cpu.slice adjusted to the new number of CPUs
 ADJUST_MACHINES=(
 	"" # host
@@ -24,6 +34,12 @@ ZRAMCTL_ARGS=(
 #
 # hugepage support
 #
+
+get_slice() {
+	xq_domain -r '
+		.domain.resource.partition // empty
+	'
+}
 
 get_vfio_devices() {
 	xq_domain -r --xml-force-list=hostdev '
@@ -44,7 +60,16 @@ is_scratch_vm() {
 }
 
 is_isolatable_vm() {
-	[[ "$GUEST_NAME" != *-nopin ]]
+	local vm_slice_path=()
+	get_slice | readarray -t vm_slice_path
+	[[ ${vm_slice_path+set} ]] || return 1
+
+	local s vm_slice
+	vm_slice="$(systemd-escape --path --suffix=slice "$vm_slice_path")"
+	for s in "${ISOLATE_TARGET_SLICES[@]}"; do
+		[[ $vm_slice == $s ]] && return 0
+	done
+	return 1
 }
 
 get_scratch_disks() {
@@ -316,7 +341,7 @@ cpufreq_setup() {
 	rm -f "$STATE_FILE"
 
 	if ! is_isolatable_vm; then
-		warn "nopin: not configuring cpufreq governor"
+		warn "not configuring cpufreq governor"
 		return
 	fi
 
@@ -498,7 +523,7 @@ cgroup_setup() {
 	local LIBSH_LOG_PREFIX="qemu::cgroup_setup($GUEST_NAME)"
 
 	if ! is_isolatable_vm; then
-		warn "nopin: not isolating pinned CPUs"
+		warn "not isolating pinned CPUs"
 		return
 	fi
 

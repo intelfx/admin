@@ -36,17 +36,28 @@ fi
 # arguments
 #
 
+RETRY_COUNT_MAX=5
+RETRY_COUNT=0
+
 BORG_COMPACT=1
 BORG_COMPACT_FORCE=0
-ARGS=()
+RSYNC_ARGS=()
+ALL_ARGS=()
 
 for arg; do
 	case "$arg" in
+	-X-retry-count=*)
+		# not appending to $ALL_ARGS, will be set to N+1 on reexec
+		RETRY_COUNT="${arg#-X-retry-count=}"
+		log "Retry count: $RETRY_COUNT"
+		;;
 	-Xno-compact)
+		ALL_ARGS+=( "$arg" )
 		BORG_COMPACT=0
 		log "Disabling automatic compaction of Borg repositories"
 		;;
 	-Xforce-compact)
+		ALL_ARGS+=( "$arg" )
 		BORG_COMPACT_FORCE=1
 		log "Forcing compaction of Borg repositories"
 		;;
@@ -54,7 +65,8 @@ for arg; do
 		die "Unrecognized: $arg"
 		;;
 	*)
-		ARGS+=( "$arg" )
+		ALL_ARGS+=( "$arg" )
+		RSYNC_ARGS+=( "$arg" )
 		;;
 	esac
 done
@@ -217,7 +229,7 @@ for dir in "${targets_borg_p[@]}"; do
 	do_rsync \
 		"$dir/" \
 		"$url:" \
-		"${ARGS[@]}"
+		"${RSYNC_ARGS[@]}"
 done
 
 # specify all patterns with a leading / because that's how you anchor rsync patterns to the root of the transfer.
@@ -233,12 +245,15 @@ do_rsync \
 	--include-from="$inclusions" \
 	./ \
 	"$url:" \
-	"${ARGS[@]}" 
+	"${RSYNC_ARGS[@]}"
 
-if (( NEED_RERUN )); then
-	log "Some directories were skipped -- restarting in a minute"
+if (( NEED_RERUN && RETRY_COUNT < RETRY_COUNT_MAX )); then
+	warn "Some directories were skipped -- restarting in a minute"
 	sleep 60
-	exec "$SCRIPT_PATH" "$@"
+	exec "$SCRIPT_PATH" -X-retry-count=$(( RETRY_COUNT + 1 )) "$@"
+elif (( NEED_RERUN )); then
+	err "Some directories were skipped -- bailing out, too many retries"
+	RC=1
 fi
 
 exit $RC

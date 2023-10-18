@@ -692,6 +692,67 @@ zram_disks_setup() {
 
 
 #
+# nvidia GPU support (hack)
+#
+
+nvidia_setup() {
+	local LIBSH_LOG_PREFIX="qemu::nvidia_setup($GUEST_NAME)"
+	local dev nvidia_unbind
+
+	STATE_FILE="$STATE_DIR/nvidia_guests"
+	if [[ -e "$STATE_FILE" ]]
+	then eval "$(< "$STATE_FILE" )"
+	else declare -A nvidia_guests
+	fi
+	nvidia_unbind=0
+
+	get_vfio_devices | while read dev; do
+		if [[ -e "/sys/bus/pci/drivers/nvidia/$dev" ]]; then
+			log "nvidia device $dev"
+			nvidia_guests[$dev]=1
+			nvidia_unbind=1
+		fi
+	done
+
+	mkdir -p "${STATE_FILE%/*}"
+	declare -p nvidia_guests >"$STATE_FILE"
+	if (( nvidia_unbind )); then
+		log "hack: unloading nvidia modules"
+		rmmod nvidia_uvm ||:
+		rmmod nvidia_drm ||:
+	fi
+}
+
+nvidia_teardown() {
+	local LIBSH_LOG_PREFIX="qemu::nvidia_teardown($GUEST_NAME)"
+	local dev nvidia_rebind
+
+	STATE_FILE="$STATE_DIR/nvidia_guests"
+	if [[ -e "$STATE_FILE" ]]
+	then eval "$(< "$STATE_FILE" )"
+	else warn "state file does not exist: $STATE_FILE"; declare -A nvidia_guests
+	fi
+	nvidia_rebind=0
+
+	get_vfio_devices | while read dev; do
+		if [[ ${nvidia_guests[$dev]} ]]; then
+			log "nvidia device $dev"
+			unset nvidia_guests[$dev]
+			nvidia_rebind=1
+		fi
+	done
+
+	mkdir -p "${STATE_FILE%/*}"
+	declare -p nvidia_guests >"$STATE_FILE"
+	if (( nvidia_rebind && ! ${#nvidia_guests[@]} )); then
+		log "hack: reloading nvidia modules"
+		modprobe nvidia_drm ||:
+		modprobe nvidia_uvm ||:
+	fi
+}
+
+
+#
 # main
 #
 
@@ -738,59 +799,13 @@ hook)
 		cgroup_setup
 		scratch_disks_setup
 		zram_disks_setup
-
-		# HACK
-		STATE_FILE="$STATE_DIR/nvidia_guests"
-		if [[ -e "$STATE_FILE" ]]
-		then eval "$(< "$STATE_FILE" )"
-		else declare -A nvidia_guests
-		fi
-		nvidia_unbind=0
-
-		get_vfio_devices | while read dev; do
-			if [[ -e "/sys/bus/pci/drivers/nvidia/$dev" ]]; then
-				log "hack: nvidia device $dev"
-				nvidia_guests[$dev]=1
-				nvidia_unbind=1
-			fi
-		done
-
-		mkdir -p "${STATE_FILE%/*}"
-		declare -p nvidia_guests >"$STATE_FILE"
-		if (( nvidia_unbind )); then
-			log "hack: unloading nvidia modules"
-			rmmod nvidia_uvm ||:
-			rmmod nvidia_drm ||:
-		fi
+		nvidia_setup
 		;;
 	'release/end')
 		hugepages_teardown
 		cpufreq_teardown
 		cgroup_teardown
-
-		# HACK
-		STATE_FILE="$STATE_DIR/nvidia_guests"
-		if [[ -e "$STATE_FILE" ]]
-		then eval "$(< "$STATE_FILE" )"
-		else warn "hack: state file does not exist: $STATE_FILE"; declare -A nvidia_guests
-		fi
-		nvidia_rebind=0
-
-		get_vfio_devices | while read dev; do
-			if [[ ${nvidia_guests[$dev]} ]]; then
-				log "hack: nvidia device $dev"
-				unset nvidia_guests[$dev]
-				nvidia_rebind=1
-			fi
-		done
-
-		mkdir -p "${STATE_FILE%/*}"
-		declare -p nvidia_guests >"$STATE_FILE"
-		if (( nvidia_rebind && ! ${#nvidia_guests[@]} )); then
-			log "hack: reloading nvidia modules"
-			modprobe nvidia_drm ||:
-			modprobe nvidia_uvm ||:
-		fi
+		nvidia_teardown
 		;;
 	esac
 	;;

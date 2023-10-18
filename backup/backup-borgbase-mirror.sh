@@ -9,8 +9,14 @@ SCRIPT_PATH="$(realpath -s "$BASH_SOURCE")"
 cd "$SCRIPT_DIR"
 . lib/lib.sh || exit 1
 
+
+#
+# constants
+#
+
 LOCAL_PATH=/mnt/data
 export RSYNC_RSH="ssh -oBatchMode=yes -oIdentitiesOnly=yes -i/etc/admin/keys/id_ed25519"
+RSYNC_PARTIAL=".rsync-partial"
 
 BORGBASE_NAME="$(hostname --short)/tank/files"
 BORGBASE_NAME_CATCH_ALL="$BORGBASE_NAME"
@@ -25,7 +31,10 @@ else
 	RSYNC_PROGRESS_ARGS+=( --itemize-changes )
 fi
 
-NEED_RERUN=0
+
+#
+# arguments
+#
 
 BORG_COMPACT=1
 BORG_COMPACT_FORCE=0
@@ -50,6 +59,27 @@ for arg; do
 	esac
 done
 
+
+#
+# functions
+#
+
+do_rsync() {
+	rsync \
+		-arAX --fake-super \
+		"${RSYNC_PROGRESS_ARGS[@]}" \
+		--human-readable \
+		--delete-after \
+		--partial-dir="$RSYNC_PARTIAL" \
+		--delay-updates \
+		"$@"
+}
+
+
+#
+# setup
+#
+
 # rsync does not have any facilities to filter by "tag files" (CACHEDIR.TAG),
 # sunrise by hand
 inclusions="$(mktemp)"
@@ -62,6 +92,13 @@ cleanup() {
 	rm -f "$inclusions" "$exclusions" "$targets_borg" "$targets_files"
 }
 trap cleanup TERM HUP INT EXIT
+
+
+#
+# main
+#
+
+NEED_RERUN=0
 
 # easiest this way, the rest of the script hardcodes "."
 cd "$LOCAL_PATH"
@@ -152,20 +189,6 @@ for dir in "${targets_borg_p[@]}"; do
 	touch "$dir/x_last_compact"
 done
 
-RSYNC_PARTIAL=".rsync-partial"
-
-do_rsync() {
-	rsync \
-		-arAX --fake-super \
-		"${RSYNC_PROGRESS_ARGS[@]}" \
-		--human-readable \
-		--delete-after \
-		--partial-dir="$RSYNC_PARTIAL" \
-		--delay-updates \
-		"$@"
-
-}
-
 for dir in "${targets_borg_p[@]}"; do
 	name="$BORGBASE_NAME/${dir#./}"
 	url="$("$SCRIPT_DIR/borgbase-get-repo.sh" "$name" "$BORGBASE_CREATE_ARGS")"
@@ -176,7 +199,6 @@ for dir in "${targets_borg_p[@]}"; do
 		"$url:" \
 		"${ARGS[@]}"
 done
-
 
 # specify all patterns with a leading / because that's how you anchor rsync patterns to the root of the transfer.
 sed -r 's|^\./|/|' \

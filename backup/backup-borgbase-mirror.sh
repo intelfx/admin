@@ -187,8 +187,7 @@ for dir in "${targets_borg_p[@]}"; do
 	log "$dir: looks like a borg repository${BORG_COMPACT:+", trying to compact"}"
 	#if ! borg with-lock --lock-wait=0 "$dir" -- true; then
 	if [[ -e "$dir/lock.exclusive" ]]; then
-		log "$dir: Borg repository is busy, skipping and scheduling a rerun"
-		echo "$dir" >>"$exclusions"
+		log "$dir: Borg repository is busy, scheduling a rerun"
 		NEED_RERUN=1
 		continue
 	fi

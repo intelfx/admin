@@ -43,6 +43,10 @@ is_scratch_vm() {
 	[[ "$GUEST_NAME" == scratch-* ]]
 }
 
+is_isolatable_vm() {
+	! [[ "$GUEST_NAME" == *-nopin ]]
+}
+
 get_scratch_disks() {
 	xq_domain -r --xml-force-list=disk '
 		.
@@ -311,8 +315,7 @@ cpufreq_setup() {
 	STATE_FILE="$STATE_DIR/cpufreq/$GUEST_NAME"
 	rm -f "$STATE_FILE"
 
-	# HACK
-	if [[ $GUEST_NAME == *-nopin ]]; then
+	if ! is_isolatable_vm; then
 		warn "nopin: not configuring cpufreq governor"
 		return
 	fi
@@ -494,8 +497,7 @@ cgroup_setup() {
 
 	local LIBSH_LOG_PREFIX="qemu::cgroup_setup($GUEST_NAME)"
 
-	# HACK
-	if [[ $GUEST_NAME == *-nopin ]]; then
+	if ! is_isolatable_vm; then
 		warn "nopin: not isolating pinned CPUs"
 		return
 	fi

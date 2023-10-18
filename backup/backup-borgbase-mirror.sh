@@ -184,8 +184,6 @@ cat $targets_files; echo
 #
 
 for dir in "${targets_borg_p[@]}"; do
-	log "$dir: looks like a borg repository${BORG_COMPACT:+", trying to compact"}"
-	#if ! borg with-lock --lock-wait=0 "$dir" -- true; then
 	if [[ -e "$dir/lock.exclusive" ]]; then
 		log "$dir: Borg repository is busy, scheduling a rerun"
 		NEED_RERUN=1
@@ -200,8 +198,10 @@ for dir in "${targets_borg_p[@]}"; do
 		log "$dir: Borg repository was compacted less than 1 week ago, skipping"
 		continue
 	fi
+
+	log "$dir: compacting Borg repository"
 	if ! borg compact --verbose "${BORG_PROGRESS_ARGS[@]}" "$dir"; then
-	       log "$dir: failed to compact, skipping and scheduling a rerun"
+	       warn "$dir: failed to compact, skipping and scheduling a rerun"
 	       echo "$dir" >>"$exclusions"
 	       NEED_RERUN=1
 	       continue

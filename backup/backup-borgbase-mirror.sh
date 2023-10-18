@@ -77,10 +77,22 @@ do_rsync() {
 		"$@" \
 	|| rc=$? && rc=0
 
-	if (( rc != 0 )); then
+	case "$rc" in
+	0)
+		;;
+	23|24)
+		warn "rsync reported partial transfer (rc=$rc), scheduling a rerun"
+		NEED_RERUN=1
+		;;
+	30)
+		warn "rsync reported timeout (rc=$rc), scheduling a rerun"
+		NEED_RERUN=1
+		;;
+	*)
 		err "rsync reported errors (rc=$rc), logging failure"
 		RC=1
-	fi
+		;;
+	esac
 }
 
 

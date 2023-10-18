@@ -2,6 +2,15 @@
 
 . /etc/admin/scripts/lib/lib.sh || exit 1
 
+#
+# NOTE: grep for (HACK|hack) prior to reusing this script in your own setup
+#
+
+
+#
+# constants
+#
+
 STATE_DIR="/run/libvirt/qemu-hook"
 VCPU_GOVERNOR=performance
 VCPU_ONDEMAND_THRESHOLD=10
@@ -31,8 +40,9 @@ ZRAMCTL_ARGS=(
 	--algorithm lz4
 )
 
+
 #
-# hugepage support
+# utility functions
 #
 
 get_slice() {
@@ -125,6 +135,11 @@ mem_decode_sysfs_hugepages() {
 	log "hugepages($name): $value bytes"
 	echo "$value"
 }
+
+
+#
+# hugepage support
+#
 
 hugepages_rollback() {
 	# input: $huge_nr_orig
@@ -308,6 +323,7 @@ hugepages_teardown() {
 	rm -f "$STATE_FILE"
 }
 
+
 #
 # cpufreq support
 #
@@ -407,6 +423,11 @@ cpufreq_teardown() {
 
 	rm -f "$STATE_FILE"
 }
+
+
+#
+# cgroup isolation support
+#
 
 cgroup_apply() {
 	log "applying CPU isolation"
@@ -614,6 +635,11 @@ cgroup_reisolate() {
 	cgroup_apply
 }
 
+
+#
+# scratch disks support
+#
+
 scratch_disks_setup() {
 	local LIBSH_LOG_PREFIX="qemu::scratch_setup($GUEST_NAME)"
 	local file size
@@ -663,6 +689,11 @@ zram_disks_setup() {
 		fi
 	done
 }
+
+
+#
+# main
+#
 
 if ! [[ -t 2 ]]; then
 	exec 2> >(systemd-cat -t libvirt-hook)

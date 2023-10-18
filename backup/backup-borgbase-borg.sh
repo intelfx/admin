@@ -142,8 +142,11 @@ for target in "${BORG_TARGETS[@]}"; do
 	borgbase_wait "$url"
 
 	if ! borg debug get-obj "$url" "$(printf '%064d' '0')" /dev/null; then
-		log "$target: initializing borg repo at $url"
-		borg init "${BORG_INIT_ARGS[@]}" "$url"
+		log "$target: initializing Borg repo at $url"
+		if ! borg init "${BORG_INIT_ARGS[@]}" "$url"; then
+			err "$target: failed to initialize Borg repo at $url"
+			exit 1
+		fi
 	fi
 
 	declare -a patterns_p=()

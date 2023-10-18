@@ -5,8 +5,8 @@
 STATE_DIR="/run/libvirt/qemu-hook"
 VCPU_GOVERNOR=performance
 VCPU_ONDEMAND_THRESHOLD=10
-# these slices would get isolated via cgroups
-ISOLATE_SLICES=(
+# these slices would get restricted via cgroups
+ISOLATE_HOST_SLICES=(
 	kthread.slice
 	system.slice
 	user.slice
@@ -433,7 +433,7 @@ cgroup_apply() {
 
 	# configure cgroup affinity
 	local slice
-	for slice in "${ISOLATE_SLICES[@]}"; do
+	for slice in "${ISOLATE_HOST_SLICES[@]}"; do
 		log "cpus: cgroup: setting $slice to $host_cpus"
 		systemctl set-property --runtime "$slice" AllowedCPUs="$host_cpus"
 	done

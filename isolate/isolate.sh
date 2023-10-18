@@ -44,7 +44,7 @@ is_scratch_vm() {
 }
 
 is_isolatable_vm() {
-	! [[ "$GUEST_NAME" == *-nopin ]]
+	[[ "$GUEST_NAME" != *-nopin ]]
 }
 
 get_scratch_disks() {

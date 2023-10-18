@@ -92,24 +92,6 @@ borgbase_name_by_target() {
 	fi
 }
 
-borgbase_wait() {
-	local url="$1"
-	local host="$url"
-	host="${host%:*}"
-	host="${host#*@}"
-
-	local timeout=1
-	while :; do
-		if getent hosts "$host" &>/dev/null; then
-			break
-		fi
-		log "Waiting $timeout s for $host to resolve..."
-		sleep "$timeout"
-		(( timeout = timeout*2 < 60 ? timeout*2 : 60 ))
-	done
-
-}
-
 #
 # setup
 #
@@ -132,15 +114,17 @@ RC=0
 
 for target in "${BORG_TARGETS[@]}"; do
 	name="$(borgbase_name_by_target "$target")"
-	url="$("$SCRIPT_DIR/borgbase-get-repo.sh" "$name" "$BORGBASE_CREATE_ARGS"):repo"
+	if ! url="$("$SCRIPT_DIR/borgbase-get-repo.sh" "$name" "$BORGBASE_CREATE_ARGS"):repo"; then
+		err "$target: failed to acquire BorgBase repo at $url"
+		RC=1
+		continue
+	fi
 	BORG_URLS[$target]="$url"
 
 	if (( OP_CREATE )); then
 	log "$target: backing up to BorgBase repo $name at $url"
 
 	(
-	borgbase_wait "$url"
-
 	if ! borg debug get-obj "$url" "$(printf '%064d' '0')" /dev/null; then
 		log "$target: initializing Borg repo at $url"
 		if ! borg init "${BORG_INIT_ARGS[@]}" "$url"; then

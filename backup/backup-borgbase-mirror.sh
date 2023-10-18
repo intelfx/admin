@@ -65,6 +65,8 @@ done
 #
 
 do_rsync() {
+	local rc
+
 	rsync \
 		-arAX --fake-super \
 		"${RSYNC_PROGRESS_ARGS[@]}" \
@@ -72,7 +74,13 @@ do_rsync() {
 		--delete-after \
 		--partial-dir="$RSYNC_PARTIAL" \
 		--delay-updates \
-		"$@"
+		"$@" \
+	|| rc=$? && rc=0
+
+	if (( rc != 0 )); then
+		err "rsync reported errors (rc=$rc), logging failure"
+		RC=1
+	fi
 }
 
 
@@ -99,6 +107,7 @@ trap cleanup TERM HUP INT EXIT
 #
 
 NEED_RERUN=0
+RC=0
 
 # easiest this way, the rest of the script hardcodes "."
 cd "$LOCAL_PATH"
@@ -220,3 +229,5 @@ if (( NEED_RERUN )); then
 	sleep 60
 	exec "$SCRIPT_PATH" "$@"
 fi
+
+exit $RC

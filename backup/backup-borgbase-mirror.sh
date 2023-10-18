@@ -28,7 +28,7 @@ if [[ -t 2 ]]; then
 	BORG_PROGRESS_ARGS+=( --progress )
 	RSYNC_PROGRESS_ARGS+=( --info=progress2 )
 else
-	RSYNC_PROGRESS_ARGS+=( --itemize-changes )
+	RSYNC_PROGRESS_ARGS+=( --itemize-changes --info=stats )
 fi
 
 

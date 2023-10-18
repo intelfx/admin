@@ -717,6 +717,12 @@ nvidia_setup() {
 	mkdir -p "${STATE_FILE%/*}"
 	declare -p nvidia_guests >"$STATE_FILE"
 	if (( nvidia_unbind )); then
+		log "hack: killing nvidia-smi"
+		pkill nvidia-smi ||:
+		log "hack: stopping nvidia-persistenced"
+		systemctl stop nvidia-persistenced ||:
+		log "hack: stopping nvidia-xorg @ stratofortress"
+		systemctl -M stratofortress stop nvidia-xorg ||:
 		log "hack: unloading nvidia modules"
 		rmmod nvidia_uvm ||:
 		rmmod nvidia_drm ||:
@@ -748,6 +754,10 @@ nvidia_teardown() {
 		log "hack: reloading nvidia modules"
 		modprobe nvidia_drm ||:
 		modprobe nvidia_uvm ||:
+		log "hack: restarting nvidia-smi inside netdata"
+		systemctl try-restart --no-block netdata ||:
+		log "hack: restarting nvidia-persistenced"
+		systemctl restart --no-block nvidia-persistenced ||:
 	fi
 }
 

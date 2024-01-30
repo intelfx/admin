@@ -471,8 +471,13 @@ cgroup_apply() {
 	local batch_cpus_count
 	if (( host_cpus_count > 16 )); then
 		batch_cpus_count="$(( host_cpus_count - 2 ))"
-	else
+	elif (( host_cpus_count > 1 )); then
 		batch_cpus_count="$(( host_cpus_count - 1 ))"
+	elif (( host_cpus_count == 1 )); then
+		batch_cpus_count=1
+	else
+		err "cpus: no host CPUs, bailing out!"
+		return 1
 	fi
 	local batch_cpu_quota="$(( batch_cpus_count * 100 ))%"
 	log "cpus: total $host_cpus_count host CPUs, $batch_cpus_count batch CPUs ($batch_cpu_quota quota)"

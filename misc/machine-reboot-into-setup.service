@@ -1,0 +1,13 @@
+[Unit]
+Description=Configure system to enter Setup on next boot
+DefaultDependencies=no
+Before=shutdown.target
+ConditionDirectoryNotEmpty=/sys/firmware/efi/efivars
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/bash -xc \
+	'if /etc/admin/scripts/system/next-boot-entry.sh arch+bench.conf; then bootctl reboot-to-firmware true; fi'
+
+[Install]
+WantedBy=shutdown.target

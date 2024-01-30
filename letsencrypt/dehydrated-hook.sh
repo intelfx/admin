@@ -115,6 +115,29 @@ deploy_openwrt() {
 	log "reloading OK"
 }
 
+deploy_outpost() {
+	local LIBSH_LOG_PREFIX="deploy_openwrt($1)"
+	local host="$1"
+	local identity="$2"
+	shift 2
+
+	deploy_prep "$@"
+	ssh_prep
+
+	log "copying cert via sftp"
+
+	do_sftp <<-EOF || die 'failed to upload cert'
+		put "$PRIVKEY" /etc/admin/certs/outpost.intelfx.name.key
+		put "$FULLCHAIN" /etc/admin/certs/outpost.intelfx.name.crt
+	EOF
+
+	log "copying OK, now reloading"
+
+	do_ssh 'systemctl try-reload-or-restart turnserver'
+
+	log "reloading OK"
+}
+
 deploy_routeros() {
 	local LIBSH_LOG_PREFIX="deploy_routeros($1)"
 	local host="$1"
@@ -170,5 +193,7 @@ hook -EP '(deploy|unchanged)_cert' sentinel.nexus.i.intelfx.name \
 #	-- deploy_routeros admin@router.sovereign.i.intelfx.name /etc/admin/keys/id_rsa
 hook -EP '(deploy|unchanged)_cert' router.nexus.i.intelfx.name \
 	-- deploy_openwrt root@router.nexus.i.intelfx.name /etc/admin/keys/id_ed25519
+hook -EP '(deploy|unchanged)_cert' outpost.intelfx.name \
+	-- deploy_outpost root@outpost.intelfx.name /etc/admin/keys/id_ed25519
 
 run_actions

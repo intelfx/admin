@@ -21,34 +21,42 @@ logdate() {
 	date "+%Y-%m-%d %H:%M:%S"
 }
 
-log() {
-	local status="${1}"
-	shift
+if [[ -n "$JOURNAL_STREAM" && ! -t 2 ]]; then
+	log() {
+		local prefix="${1}"
+		shift 2
 
-	echo >&2 "$(logdate): ${PROGRAM_NAME}: ${status}: ${*}"
+		echo >&2 "${prefix}${PROGRAM_NAME}: ${*}"
+	}
+else
+	log() {
+		local status="${2}"
+		shift 2
 
-}
+		echo >&2 "$(logdate): ${PROGRAM_NAME}: ${status}: ${*}"
+	}
+fi
 
 warning() {
-	log WARNING "${@}"
+	log "<4>" WARNING "${@}"
 }
 
 error() {
-	log ERROR "${@}"
+	log "<3>" ERROR "${@}"
 }
 
 info() {
-	log INFO "${@}"
+	log "<5>" INFO "${@}"
 }
 
 fatal() {
-	log FATAL "${@}"
+	log "<2>" FATAL "${@}"
 	exit 1
 }
 
-debug=${NETDATA_ALARM_NOTIFY_DEBUG-0}
+debug=${NETDATA_ALARM_NOTIFY_DEBUG:+1}
 debug() {
-	[ "${debug}" = "1" ] && log DEBUG "${@}"
+	if [[ ${debug} ]]; then log "<7>" DEBUG "${@}"; fi
 }
 
 # -----------------------------------------------------------------------------
@@ -119,13 +127,12 @@ fi
 # -----------------------------------------------------------------------------
 
 # alertmanager
-ALERTMANAGER_URL="http://stratofortress.nexus.i.intelfx.name:8007/alertmanager"
-
+alertmanager_url="${NETDATA_ALERTMANAGER_URL-"http://localhost:9093/alertmanager"}"
 _alertmanager_call() {
 	local a amtool=()
 	amtool=(
 		amtool alert add
-		"--alertmanager.url=$ALERTMANAGER_URL"
+		"--alertmanager.url=$alertmanager_url"
 		"$@"
 		"${labels[@]}"
 	)

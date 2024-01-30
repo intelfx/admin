@@ -1,0 +1,15 @@
+[Unit]
+Wants=network.target network-online.target
+After=network.target network-online.target
+
+Requires=tailscaled.service
+After=tailscaled.service
+
+[Service]
+Type=oneshot
+ExecStart=/etc/admin/scripts/misc/tailscale-cert.sh
+ExecStartPost=/usr/bin/systemctl try-reload-or-restart nginx.service
+WorkingDirectory=/etc/admin/certs
+
+[Install]
+Also=tailscale-cert.timer

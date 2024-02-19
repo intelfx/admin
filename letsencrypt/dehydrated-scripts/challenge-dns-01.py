@@ -1,18 +1,17 @@
 #!/usr/bin/env python3
 
-import sys
 import argparse
 import logging
 import yaml
 import json
-import requests
 import socket
 import time
 import subprocess
 
+import dns.resolver
+
 import lib
 
-import dns.resolver
 
 def gcloud_dns_list(zone):
 	r = lib.run(

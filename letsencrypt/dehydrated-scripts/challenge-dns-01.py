@@ -35,7 +35,7 @@ def wait(*, name, type, target):
 		try:
 			answers = {
 				str(b, encoding='ascii')
-				for r in dns.resolver.query(name, type)
+				for r in dns.resolver.resolve(name, type)
 				for b in r.strings
 			}
 			if answers == {target}:

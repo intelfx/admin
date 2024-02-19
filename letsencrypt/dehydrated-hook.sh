@@ -6,6 +6,9 @@
 # raise priority of our logs
 _LIBSH_PRIO[log]=notice
 
+# set path to gcloud
+source /etc/profile.d/google-cloud-*.sh
+
 #
 # functions
 #

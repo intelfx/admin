@@ -1,0 +1,6 @@
+[sshd]
+mode = aggressive
+enabled = true
+maxretry = 5
+findtime = 1d
+bantime = 1d

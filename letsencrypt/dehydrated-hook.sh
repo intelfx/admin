@@ -87,6 +87,9 @@ deploy_pikvm() {
 		put "$PRIVKEY" /etc/kvmd/nginx/ssl/server.key
 		put "$FULLCHAIN" /etc/kvmd/nginx/ssl/server.crt
 	EOF
+	# HACK: trigger update of the Tailscale cert (also LE, but done autonomously)
+	log "HACK: triggering autonomous update for tailscale"
+	do_ssh "systemctl start tailscale-cert.service"
 
 	log "copying OK, now reloading"
 	do_ssh 'systemctl reload kvmd-nginx'

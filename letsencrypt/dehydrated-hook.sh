@@ -90,7 +90,7 @@ deploy_pikvm() {
 
 	log "copying OK, now reloading"
 	do_ssh 'systemctl reload kvmd-nginx'
-	do_ssh 'ro'
+	do_ssh 'ro || true'
 
 	log "reloading OK"
 }

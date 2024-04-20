@@ -1,0 +1,21 @@
+#!/bin/sh
+
+# SSH starts the command with an empty environment which does not include
+# any of the locale variables. However, mosh needs one to be set, otherwise
+# the client's locale will be used (and there is no guarantee that the client's
+# locale exists on the server).
+if test -e /etc/profile.d/locale.sh; then
+	. /etc/profile.d/locale.sh
+fi
+
+# If we are called with agent forwarding, do not leak the socket (that will
+# become stale as soon as the bootstrap ssh session is closed) into the user
+# environment.
+unset SSH_AUTH_SOCK
+
+# Run mosh-server in a systemd user scope to prevent it from being killed
+# if systemd is configured to clean up user sessions.
+# TODO: extend systemd-run to exit as soon as the main process stdout is
+# closed, and run mosh-server in a service rather than a scope.
+exec systemd-run --user --scope \
+	/usr/bin/mosh-server "$@" -p 60000:60010

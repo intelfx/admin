@@ -13,6 +13,11 @@ fi
 # environment.
 unset SSH_AUTH_SOCK
 
+# Provide reasonable defaults for mosh-server keepalive timeouts.
+# FIXME: move this someplace else
+export MOSH_SERVER_NETWORK_TMOUT=$(( 60*60*24*2 ))  # 2 days
+export MOSH_SERVER_SIGNAL_TMOUT=$(( 60 ))  # 1 minute
+
 # Run mosh-server in a systemd user scope to prevent it from being killed
 # if systemd is configured to clean up user sessions.
 # TODO: extend systemd-run to exit as soon as the main process stdout is

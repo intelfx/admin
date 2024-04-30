@@ -110,6 +110,8 @@ trap cleanup TERM HUP INT EXIT
 # main
 #
 
+log "$0${*:+" ${*@Q}"}: backing up $LOCAL_PATH to BorgBase (borg)"
+
 RC=0
 
 for target in "${BORG_TARGETS[@]}"; do

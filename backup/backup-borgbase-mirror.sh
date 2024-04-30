@@ -49,17 +49,14 @@ for arg; do
 	-X-retry-count=*)
 		# not appending to $ALL_ARGS, will be set to N+1 on reexec
 		RETRY_COUNT="${arg#-X-retry-count=}"
-		log "Retry count: $RETRY_COUNT"
 		;;
 	-Xno-compact)
 		ALL_ARGS+=( "$arg" )
 		BORG_COMPACT=0
-		log "Disabling automatic compaction of Borg repositories"
 		;;
 	-Xforce-compact)
 		ALL_ARGS+=( "$arg" )
 		BORG_COMPACT_FORCE=1
-		log "Forcing compaction of Borg repositories"
 		;;
 	-X*)
 		die "Unrecognized: $arg"
@@ -129,6 +126,16 @@ trap cleanup TERM HUP INT EXIT
 #
 # main
 #
+
+log "$0${*:+" ${*@Q}"}: backing up $LOCAL_PATH to BorgBase (mirror)"
+if (( RETRY_COUNT != 0 )); then
+	log "$0: retry count: $RETRY_COUNT of $RETRY_COUNT_MAX"
+fi
+if (( ! BORG_COMPACT )); then
+	log "$0: disabling automatic compaction of Borg repositories"
+elif (( BORG_COMPACT_FORCE )); then
+	log "$0: forcing compaction of Borg repositories"
+fi
 
 NEED_RERUN=0
 RC=0

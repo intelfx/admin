@@ -87,7 +87,7 @@ do_rsync() {
 		--partial-dir="$RSYNC_PARTIAL" \
 		--delay-updates \
 		"$@" \
-	|| rc=$? && rc=0
+	&& rc=0 || rc=$?
 
 	case "$rc" in
 	0)

@@ -206,7 +206,11 @@ for dir in "${targets_borg_p[@]}"; do
 		continue
 	fi
 
-	if ! (( BORG_COMPACT_FORCE )) && find "$dir" -maxdepth 1 -mindepth 1 -type f -name "x_last_compact" -newermt '1 week ago' | grep -q .; then
+	if (( BORG_COMPACT_FORCE )); then
+		:
+	elif [[ -e "$dir/x_force_compact" ]]; then
+		log "$dir: Borg repository has x_force_compact, proceeding"
+	elif find "$dir" -maxdepth 1 -mindepth 1 -type f -name "x_last_compact" -newermt '1 week ago' | grep -q .; then
 		log "$dir: Borg repository was compacted less than 1 week ago, skipping"
 		continue
 	fi
@@ -219,6 +223,7 @@ for dir in "${targets_borg_p[@]}"; do
 	       continue
 	fi
 	touch "$dir/x_last_compact"
+	rm -f "$dir/x_force_compact"
 done
 
 for dir in "${targets_borg_p[@]}"; do

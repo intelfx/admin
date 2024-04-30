@@ -139,7 +139,7 @@ deploy_outpost() {
 
 	log "copying OK, now reloading"
 
-	do_ssh 'systemctl try-reload-or-restart turnserver'
+	do_ssh 'systemctl try-reload-or-restart turnserver nginx'
 
 	log "reloading OK"
 }

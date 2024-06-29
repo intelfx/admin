@@ -1,6 +1,6 @@
 [submodule "letsencrypt/dehydrated"]
 	path = letsencrypt/dehydrated
-	url = https://github.com/intelfx/dehydrated
+	url = https://github.com/dehydrated-io/dehydrated
 [submodule "lib"]
 	path = lib
 	url = https://github.com/intelfx/lib

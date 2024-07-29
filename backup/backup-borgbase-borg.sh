@@ -148,6 +148,13 @@ for target in "${BORG_TARGETS[@]}"; do
 			realpath --strip --relative-to="$target" "$other"
 		fi
 	done >"$blacklist"
+	# locations that are named as restricted from backup
+	find . \
+		-type d \
+		\( -name '*.wip' -or -name '*.tmp' \) \
+		-printf '%p\n' \
+		-prune \
+		>>"$blacklist"
 	# locations that are mirrored to a separate raw repo, bypassing borg
 	find . \
 		-type f \

@@ -36,6 +36,7 @@ fi
 # arguments
 #
 
+DRY_RUN=0
 RETRY_COUNT_MAX=5
 RETRY_COUNT=0
 
@@ -57,6 +58,9 @@ for arg; do
 	-Xforce-compact)
 		ALL_ARGS+=( "$arg" )
 		BORG_COMPACT_FORCE=1
+		;;
+	-Xdry-run)
+		DRY_RUN=1
 		;;
 	-X*)
 		die "Unrecognized: $arg"
@@ -198,6 +202,10 @@ cat $targets_borg; echo
 
 echo "MISC FILES:"
 cat $targets_files; echo
+
+if (( DRY_RUN )); then
+	exit
+fi
 
 
 #

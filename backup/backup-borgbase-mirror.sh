@@ -46,9 +46,9 @@ ALL_ARGS=()
 
 for arg; do
 	case "$arg" in
-	-X-retry-count=*)
+	-Xretry-count=*)
 		# not appending to $ALL_ARGS, will be set to N+1 on reexec
-		RETRY_COUNT="${arg#-X-retry-count=}"
+		RETRY_COUNT="${arg#-Xretry-count=}"
 		;;
 	-Xno-compact)
 		ALL_ARGS+=( "$arg" )
@@ -262,7 +262,7 @@ do_rsync \
 if (( NEED_RERUN && RETRY_COUNT < RETRY_COUNT_MAX )); then
 	warn "Some directories were skipped -- restarting in a minute"
 	sleep 60
-	exec "$SCRIPT_PATH" -X-retry-count=$(( RETRY_COUNT + 1 )) "$@"
+	exec "$SCRIPT_PATH" -Xretry-count=$(( RETRY_COUNT + 1 )) "${ALL_ARGS[@]}"
 elif (( NEED_RERUN )); then
 	err "Some directories were skipped -- bailing out, too many retries"
 	RC=1

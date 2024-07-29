@@ -123,12 +123,13 @@ do_rsync() {
 # sunrise by hand
 inclusions="$(mktemp)"
 exclusions="$(mktemp)"
+blacklist="$(mktemp)"
 
 targets_borg="$(mktemp)"
 targets_files="$(mktemp)"
 
 cleanup() {
-	rm -f "$inclusions" "$exclusions" "$targets_borg" "$targets_files"
+	rm -f "$inclusions" "$exclusions" "$blacklist" "$targets_borg" "$targets_files"
 }
 trap cleanup TERM HUP INT EXIT
 
@@ -155,6 +156,17 @@ RC=0
 # easiest this way, the rest of the script hardcodes "."
 cd "$LOCAL_PATH"
 
+log "Constructing blacklist (*.wip, *.tmp)"
+find . \
+	! -readable -prune -or \
+	-type d \
+	\( -name '*.wip' -or -name '*.tmp' \) \
+	-printf '%p\n' \
+	-prune \
+	>"$blacklist" \
+|| true
+readarray -t blacklist_p <"$blacklist"
+
 log "Constructing exclusions (CACHEDIR.TAG, NOBACKUP.TAG)"
 find . \
 	! -readable -prune -or \
@@ -177,6 +189,7 @@ readarray -t inclusions_p <"$inclusions"
 
 findctl_init FIND
 findctl_add_targets FIND .
+findctl_add_exclusions FIND "${blacklist_p[@]}"
 findctl_add_exclusions FIND "${exclusions_p[@]}"
 findctl_add_inclusions FIND "${inclusions_p[@]}"
 findctl_add_pre_args FIND \
@@ -204,6 +217,9 @@ findctl_run FIND \
 	>"$targets_files" \
 || true
 readarray -t targets_files_p <"$targets_files"
+
+echo "BLACKLIST:"
+cat $blacklist; echo
 
 echo "EXCLUSIONS:"
 cat $exclusions; echo

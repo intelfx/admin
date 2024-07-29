@@ -155,20 +155,24 @@ RC=0
 # easiest this way, the rest of the script hardcodes "."
 cd "$LOCAL_PATH"
 
+log "Constructing exclusions (CACHEDIR.TAG, NOBACKUP.TAG)"
 find . \
 	! -readable -prune -or \
 	-type f \
 	\( -name CACHEDIR.TAG -or -name NOBACKUP.TAG \) \
 	-printf '%h\n' \
-	>"$exclusions"
+	>"$exclusions" \
+|| true
 readarray -t exclusions_p <"$exclusions"
 
+log "Constructing nested inclusions (CACHEDIR.TAG, NOBACKUP.TAG -> BACKUP.TAG)"
 maybe_find "${exclusions_p[@]}" \
 	! -readable -prune -or \
 	-type f \
 	-name BACKUP.TAG \
 	-printf '%h\n' \
-	>"$inclusions"
+	>"$inclusions" \
+|| true
 readarray -t inclusions_p <"$inclusions"
 
 findctl_init FIND
@@ -179,22 +183,26 @@ findctl_add_pre_args FIND \
 	! -readable -prune -or
 
 # some less-than-superficial checks whether $1 is a borg repository
+log "Looking for borg repositories"
 findctl_run FIND \
 	-type f \
 	-name 'config' \
 	-execdir test -d 'data' \; \
 	-execdir grep -q -Fx '[repository]' {} \; \
 	-printf '%h\n' \
-	>"$targets_borg"
+	>"$targets_borg" \
+|| true
 readarray -t targets_borg_p <"$targets_borg"
 
 # other locations that have to be backed up with rsync into a separate raw repo, bypassing borg
 #findctl_add_exclusions FIND "${targets_borg_p[@]}"
+log "Looking for raw files (DONTBORG.TAG)"
 findctl_run FIND \
 	-type f \
 	-name DONTBORG.TAG \
 	-printf '%h\n' \
-	>"$targets_files"
+	>"$targets_files" \
+|| true
 readarray -t targets_files_p <"$targets_files"
 
 echo "EXCLUSIONS:"

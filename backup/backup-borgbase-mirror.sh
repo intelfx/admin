@@ -86,7 +86,7 @@ do_rsync() {
 		delay_updates_flag=()
 	fi
 
-	rsync \
+	Trace rsync \
 		-arAX --fake-super \
 		"${RSYNC_PROGRESS_ARGS[@]}" \
 		--human-readable \

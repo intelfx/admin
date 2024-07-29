@@ -80,13 +80,19 @@ done
 do_rsync() {
 	local rc
 
+	# do not --delay-updates at the final retry
+	local delay_updates_flag=( --delay-updates )
+	if ! (( RETRY_COUNT > RETRY_COUNT_MAX )); then
+		delay_updates_flag=()
+	fi
+
 	rsync \
 		-arAX --fake-super \
 		"${RSYNC_PROGRESS_ARGS[@]}" \
 		--human-readable \
 		--delete-after \
 		--partial-dir="$RSYNC_PARTIAL" \
-		--delay-updates \
+		"${delay_updates_flag[@]}" \
 		"$@" \
 	&& rc=0 || rc=$?
 

@@ -127,14 +127,16 @@ trap cleanup TERM HUP INT EXIT
 # main
 #
 
-log "$0${*:+" ${*@Q}"}: backing up $LOCAL_PATH to BorgBase (mirror)"
+log "$LIB_ARGV: backing up $LOCAL_PATH to BorgBase (mirror)"
+LIBSH_LOG_PREFIX="$LIB_ARGV0: $LOCAL_PATH"
+
 if (( RETRY_COUNT != 0 )); then
-	log "$0: retry count: $RETRY_COUNT of $RETRY_COUNT_MAX"
+	log "retry count: $RETRY_COUNT of $RETRY_COUNT_MAX"
 fi
 if (( ! BORG_COMPACT )); then
-	log "$0: disabling automatic compaction of Borg repositories"
+	log "disabling automatic compaction of Borg repositories"
 elif (( BORG_COMPACT_FORCE )); then
-	log "$0: forcing compaction of Borg repositories"
+	log "forcing compaction of Borg repositories"
 fi
 
 NEED_RERUN=0

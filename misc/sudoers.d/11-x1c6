@@ -1,0 +1,7 @@
+# vim: ft=sudoers:
+
+Cmnd_Alias TLP = /usr/bin/tlp, /usr/bin/tlp-stat
+Cmnd_Alias PM_LOCAL = /home/intelfx/bin/wrappers/turbostat-intel, /home/intelfx/bin/hw/x1c6_fan.sh
+Cmnd_Alias PM_INTEL = /usr/bin/intel_gpu_top, /usr/bin/intel-undervolt, /usr/local/bin/throttled
+
+%wheel ALL=(ALL) NOPASSWD: TLP, PM_LOCAL, PM_INTEL

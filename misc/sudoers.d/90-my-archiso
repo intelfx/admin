@@ -1,0 +1,19 @@
+# vim: ft=sudoers:
+
+Defaults env_keep += "LANG LANGUAGE LINGUAS LC_* _XKB_CHARSET"
+Defaults env_keep += "HOME"
+Defaults env_keep += "EDITOR PAGER"
+Defaults env_keep += "LESS SYSTEMD_LESS"
+Defaults env_keep += "PYTHONPATH"
+Defaults env_keep += "SSH_AUTH_SOCK"
+Defaults env_keep += "TMUX TMUX_PANE"
+Defaults env_keep += "SYSTEMD_EMOJI SYSTEMD_TINT_BACKGROUND SYSTEMD_ADJUST_TERMINAL_TITLE"
+Defaults env_keep += "HTOPRC"
+Defaults env_keep += "MINIKUBE_IN_STYLE"
+Defaults env_keep += "BAT_THEME"
+Defaults !secure_path
+Defaults !use_pty
+Defaults timestamp_type = global
+Defaults insults
+
+%wheel ALL=(ALL) NOPASSWD: ALL

@@ -1,0 +1,11 @@
+[Trigger]
+Operation = Install
+Operation = Upgrade
+Operation = Remove
+Type = Path
+Target = *
+
+[Action]
+Description = Remount rootfs with high compression
+When = PreTransaction
+Exec = /etc/admin/scripts/pacman/remount-of.sh . -o compress-force=zstd:19

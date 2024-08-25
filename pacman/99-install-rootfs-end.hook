@@ -1,0 +1,11 @@
+[Trigger]
+Operation = Install
+Operation = Upgrade
+Operation = Remove
+Type = Path
+Target = *
+
+[Action]
+Description = Remount rootfs with default options
+When = PostTransaction
+Exec = /etc/admin/scripts/pacman/remount-of.sh .

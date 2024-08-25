@@ -1,0 +1,4 @@
+#!/bin/bash -e
+
+rm -f /etc/nftables-good.conf
+systemctl stop nftables-restore.timer

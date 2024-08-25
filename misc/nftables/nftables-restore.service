@@ -1,0 +1,7 @@
+[Unit]
+Description=Reload nftables from known good configuration
+AssertPathExists=/etc/nftables-good.conf
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/nft -f /etc/nftables-good.conf

@@ -1,0 +1,13 @@
+[Unit]
+Description=Load nftables from known good configuration
+ConditionPathExists=/etc/nftables-good.conf
+Wants=network-pre.target
+Before=network-pre.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=true
+ExecStart=/usr/bin/nft -f /etc/nftables-good.conf
+
+[Install]
+WantedBy=multi-user.target

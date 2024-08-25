@@ -1,0 +1,6 @@
+[Unit]
+Description=Wait to restore /etc/nftables.conf
+
+[Timer]
+OnActiveSec=5m
+RemainAfterElapse=false

@@ -1,0 +1,16 @@
+[Unit]
+Description=Reload nftables from /etc/nftables.conf (safely)
+
+[Service]
+Type=oneshot
+ExecStartPre=/usr/bin/nft -c -f /etc/nftables.conf
+ExecStart=/bin/bash -c " \
+if ! [[ -e /etc/nftables-good.conf ]]; then \
+	{ echo 'flush ruleset'; nft list ruleset; } > /etc/nftables-good.conf; \
+fi; \
+systemctl restart nftables-restore.timer \
+"
+ExecStart=/usr/bin/nft -f /etc/nftables.conf
+
+[Install]
+Also=nftables-reload.path

@@ -1,4 +1,11 @@
 #!/bin/bash -e
 
+if [[ "$(systemctl is-failed nftables-reload.service)" == failed ]]; then
+	set +e
+	systemctl --no-pager status -n0 nftables-reload.service
+	journalctl --no-pager --no-hostname -u nftables-reload.service -L
+	exit 1
+fi
+
 rm -f /etc/nftables-good.conf
 systemctl stop nftables-restore.timer

@@ -4,12 +4,14 @@ Description=Reload nftables from /etc/nftables.conf (safely)
 [Service]
 Type=oneshot
 ExecStartPre=/usr/bin/nft -c -f /etc/nftables.conf
-ExecStart=/bin/bash -c " \
+ExecStart=/bin/bash -c ' \
 if ! [[ -e /etc/nftables-good.conf ]]; then \
-	{ echo 'flush ruleset'; nft list ruleset; } > /etc/nftables-good.conf; \
+	for t in "inet nft" "ip nft4" "ip6 nft6"; do \
+		echo "destroy table $$t"; nft list table $$t 2>/dev/null; \
+	done > /etc/nftables-good.conf; \
 fi; \
 systemctl restart nftables-restore.timer \
-"
+'
 ExecStart=/usr/bin/nft -f /etc/nftables.conf
 
 [Install]

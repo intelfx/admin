@@ -1,0 +1,5 @@
+# vim: ft=sudoers:
+
+ #1000 ALL=(ALL) NOPASSWD: ALL
+%users ALL=(ALL) NOPASSWD: ALL
+%wheel ALL=(ALL) NOPASSWD: ALL

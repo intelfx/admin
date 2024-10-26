@@ -7,6 +7,8 @@ import json
 import socket
 import time
 import subprocess
+import tempfile
+import contextlib
 
 import dns.resolver
 
@@ -161,9 +163,11 @@ def subdomain_of(subdomain, domain):
 
 config = config.gcloud
 
-actions[args.action](
-	zone = config.zone,
-	name=f'_acme-challenge.{args.domain}.',
-	target=args.dns_token,
-	type='TXT'
-)
+with tempfile.TemporaryDirectory(prefix="letsencrypt-dns-01") as tempdir:
+	with contextlib.chdir(tempdir):
+		actions[args.action](
+			zone = config.zone,
+			name=f'_acme-challenge.{args.domain}.',
+			target=args.dns_token,
+			type='TXT'
+		)

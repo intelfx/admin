@@ -8,4 +8,4 @@ Target = *
 [Action]
 Description = Remount rootfs with default options
 When = PostTransaction
-Exec = /etc/admin/scripts/pacman/remount-of.sh .
+Exec = /etc/admin/scripts/pacman/remount-of.sh --fini .

@@ -8,4 +8,4 @@ Target = *
 [Action]
 Description = Remount rootfs with high compression
 When = PreTransaction
-Exec = /etc/admin/scripts/pacman/remount-of.sh . -o compress-force=zstd:19
+Exec = /etc/admin/scripts/pacman/remount-of.sh --init . -o compress-force=zstd:19,commit=300

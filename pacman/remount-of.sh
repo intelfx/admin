@@ -1,7 +1,5 @@
 #!/bin/bash
 
-#!/bin/bash
-
 set -eo pipefail
 shopt -s lastpipe
 
@@ -38,6 +36,16 @@ EOF
 # args
 #
 
+PHASE=
+while (( $# )); do
+	case "$1" in
+	--init) PHASE=start; shift ;;
+	--fini) PHASE=end; shift ;;
+	-*) usage "invalid option: ${1@Q}" ;;
+	*) break ;;
+	esac
+done
+
 if (( $# < 1 )); then
 	usage "expected at least 1 positional argument"
 fi
@@ -45,6 +53,13 @@ fi
 FS_FILE="$1"
 shift
 REMOUNT_ARGS=( "$@" )
+
+if ! [[ $PHASE ]]; then
+	if [[ ${REMOUNT_ARGS+set} ]]
+	then PHASE=start
+	else PHASE=end
+	fi
+fi
 
 #
 # main
@@ -57,16 +72,20 @@ if ! df "$FS_PATH" --output=target | tail -n-1 | IFS='' read -r FS_MOUNTPOINT; t
 	die "${FS_PATH@Q}: failed to determine mountpoint"
 fi
 
-if [[ ${REMOUNT_ARGS+set} ]]; then
-	# log "${FS_PATH@Q}: remounting ${FS_MOUNTPOINT@Q} with ${REMOUNT_ARGS[@]@Q}"
+case "$PHASE" in
+start)
 	REMOUNT_ARGS=( --options-source fstab --options-mode prepend -o remount "${REMOUNT_ARGS[@]}" )
 	set -x
 	mount -v "$FS_MOUNTPOINT" "${REMOUNT_ARGS[@]}"
 	sync -f "$FS_MOUNTPOINT"
-else
-	# log "${FS_PATH@Q}: remounting ${FS_MOUNTPOINT@Q} with fstab options"
+	;;
+end)
 	REMOUNT_ARGS=( --options-source fstab --options-mode prepend -o remount "${REMOUNT_ARGS[@]}" )
 	set -x
 	sync -f "$FS_MOUNTPOINT"
 	mount -v "$FS_MOUNTPOINT" "${REMOUNT_ARGS[@]}"
-fi
+	;;
+*)
+	die "internal error: invalid phase: ${PHASE@Q}"
+	;;
+esac

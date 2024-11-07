@@ -1,0 +1,24 @@
+#!/bin/bash
+
+build() {
+    echo "root:x:0:0:root:/root:/bin/sh" >"$BUILDROOT/etc/passwd"
+    # copy root password from host system to initramfs, and unlock the account if locked
+    grep '^root:' /etc/shadow >"$BUILDROOT/etc/shadow"
+
+    # `passwd -R` does not work somehow -- sunrise by hand
+    if grep -q '^root:[!*]' "$BUILDROOT/etc/shadow"; then
+        echo 'root::::::::' >"$BUILDROOT/etc/shadow"
+    fi
+}
+
+help() {
+    cat <<HELPEOF
+This will adjust a systemd-based initramfs so as to allow sulogin (and thus
+rescue.service and emergency.service) work inside it.
+
+Warning: if the root account is locked on the host machine, it will be made
+passwordless(!) in the initramfs.
+HELPEOF
+}
+
+# vim: set ft=sh ts=4 sw=4 et:

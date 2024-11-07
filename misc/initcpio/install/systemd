@@ -7,7 +7,7 @@ add_systemd_unit() {
 
     local unit key dep
 
-    unit=$(PATH=/usr/lib/systemd/system:/lib/systemd/system type -P "$1")
+    unit=$(PATH=/etc/systemd/system:/usr/lib/systemd/system type -P "$1")
     if [[ -z $unit ]]; then
         # complain about not found unit file
         return 1
@@ -36,19 +36,26 @@ add_systemd_unit() {
 
     done <"$unit"
 
-    # preserve reverse soft dependency
-    for dep in {/usr,}/lib/systemd/system/*.wants/"${unit##*/}"; do
+    # preserve reverse dependency links
+    for dep in {/etc,/usr/lib}/systemd/system/*.{wants,requires}/"${unit##*/}"; do
         if [[ -L $dep ]]; then
             add_symlink "$dep"
         fi
     done
 
-    # add hard dependencies
-    if [[ -d $unit.requires ]]; then
-        for dep in "$unit".requires/*; do
+    # add hard dependencies specified via files
+    for dep in {/etc,/usr/lib}/systemd/system/"$unit".requires/*; do
+        if [[ -f "$dep" ]]; then
             add_systemd_unit "${dep##*/}"
-        done
-    fi
+        fi
+    done
+
+    # add hard dependency links
+    for dep in {/etc,/usr/lib}/systemd/system/"$unit".requires/*; do
+        if [[ -L $dep ]]; then
+            add_symlink "$dep"
+        fi
+    done
 }
 
 add_systemd_drop_in() {

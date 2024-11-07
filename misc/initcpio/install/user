@@ -1,0 +1,12 @@
+#!/bin/bash
+
+build() {
+    map add_full_dir "${DIRECTORIES[@]}"
+    map add_systemd_unit "${UNITS[@]}"
+}
+
+help() {
+    cat <<HELPEOF
+This will add \${DIRECTORIES} and \${UNITS} to the initcpio.
+HELPEOF
+}

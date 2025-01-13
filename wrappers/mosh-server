@@ -29,7 +29,7 @@ while (( $# )); do
 done
 
 MOSH_ARGS+=(
-	-p 60000:60010
+	-p 60000:60009
 )
 
 # Run mosh-server in a systemd user scope to prevent it from being killed

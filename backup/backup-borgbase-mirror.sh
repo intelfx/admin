@@ -15,6 +15,8 @@ cd "$SCRIPT_DIR"
 #
 
 LOCAL_PATH=/mnt/data
+export BORG_RSH="ssh -oBatchMode=yes -oIdentitiesOnly=yes -i/etc/admin/keys/id_ed25519"
+export BORG_PASSCOMMAND="cat /etc/admin/keys/borg"
 export RSYNC_RSH="ssh -oBatchMode=yes -oIdentitiesOnly=yes -i/etc/admin/keys/id_ed25519"
 RSYNC_PARTIAL=".rsync-partial"
 

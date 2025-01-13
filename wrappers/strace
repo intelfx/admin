@@ -1,0 +1,24 @@
+#!/bin/bash -e
+
+log() {
+	echo ":: $*" >&2
+}
+
+err() {
+	echo "E: $*" >&2
+}
+
+die() {
+	err "$@"
+	exit 1
+}
+
+(( $# >= 1 )) || die "usage: $0 <unit name> <command...>"
+
+UNIT_NAME="$1"
+PROCESS_NAME="${2##*/}"
+STRACE_PATH="/var/log/strace/$UNIT_NAME"
+if [[ $INVOCATION_ID ]]; then STRACE_PATH+="/$INVOCATION_ID"; fi
+
+mkdir -p "$STRACE_PATH"
+exec /usr/bin/strace -D -f -o "$STRACE_PATH/$PROCESS_NAME.log" "${@:2}"

@@ -2,6 +2,13 @@
 
 Defaults env_keep += "LANG LANGUAGE LINGUAS LC_* _XKB_CHARSET"
 Defaults env_keep += "HOME"
+Defaults env_keep += "XAPPLRESDIR XFILESEARCHPATH XUSERFILESEARCHPATH"
+Defaults env_keep += "QTDIR KDEDIR"
+Defaults env_keep += "XDG_SESSION_COOKIE"
+Defaults env_keep += "XMODIFIERS GTK_IM_MODULE QT_IM_MODULE QT_IM_SWITCHER"
+#Defaults env_keep += "XAUTHORITY DISPLAY WAYLAND_DISPLAY XDG_RUNTIME_DIR"
+#Defaults env_keep += "QT_QPA_PLATFORM QT_QPA_PLATFORMTHEME"
+
 Defaults env_keep += "EDITOR PAGER"
 Defaults env_keep += "LESS SYSTEMD_LESS"
 Defaults env_keep += "PYTHONPATH"
@@ -11,8 +18,7 @@ Defaults env_keep += "SYSTEMD_EMOJI SYSTEMD_TINT_BACKGROUND SYSTEMD_ADJUST_TERMI
 Defaults env_keep += "HTOPRC"
 Defaults env_keep += "MINIKUBE_IN_STYLE"
 Defaults env_keep += "BAT_THEME"
-#Defaults env_keep += "XAUTHORITY DISPLAY WAYLAND_DISPLAY XDG_RUNTIME_DIR"
-#Defaults env_keep += "QT_QPA_PLATFORM QT_QPA_PLATFORMTHEME"
+
 Defaults !secure_path
 Defaults !use_pty
 Defaults timestamp_type = global

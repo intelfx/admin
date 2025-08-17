@@ -1,0 +1,4 @@
+# vim: set ft=sudoers:
+
+%build ALL=(root) NOPASSWD: SETENV: /usr/bin/makechrootpkg
+%build ALL=(root) NOPASSWD: /usr/bin/mkarchroot, /usr/bin/arch-nspawn

@@ -1,6 +1,8 @@
 [DEFAULT]
 backend = systemd
 banaction = nftables
+banaction_allports = nftables[type=allports]
+
 ignoreip = 127.0.0.0/8
  10.0.0.0/8
  172.16.0.0/12

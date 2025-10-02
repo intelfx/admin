@@ -19,6 +19,7 @@ Defaults env_keep += "HTOPRC"
 Defaults env_keep += "MINIKUBE_IN_STYLE"
 Defaults env_keep += "BAT_THEME"
 Defaults env_keep += "ORIG_TERM"
+Defaults env_keep += "DOCKER_HOST CONTAINER_HOST"
 
 Defaults !secure_path
 Defaults !use_pty

@@ -18,6 +18,7 @@ Defaults env_keep += "SYSTEMD_EMOJI SYSTEMD_TINT_BACKGROUND SYSTEMD_ADJUST_TERMI
 Defaults env_keep += "HTOPRC"
 Defaults env_keep += "MINIKUBE_IN_STYLE"
 Defaults env_keep += "BAT_THEME"
+Defaults env_keep += "ORIG_TERM"
 
 Defaults !secure_path
 Defaults !use_pty

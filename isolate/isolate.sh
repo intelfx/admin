@@ -93,6 +93,17 @@ get_scratch_disks() {
 	'
 }
 
+get_zvol_disks() {
+	xq_domain -r --xml-force-list=disk '
+		.
+		| .domain.devices.disk // empty
+		| map(select(."@device" == "disk" and ."@type" == "block"))
+		| map(select(.source."@dev" | test("^/dev/zvol/")))
+		| map(.source."@dev")
+		| .[]
+	'
+}
+
 get_zram_disks() {
 	xq_domain -r --xml-force-list=disk '
 		.
@@ -662,6 +673,53 @@ scratch_disks_setup() {
 	done
 }
 
+_zvol_try_rollback_to() {
+	local s
+	# $zvol_rollback, $zvol_snapshots are globals
+	if ! [[ $zvol_rollback ]]; then
+		for s in "${zvol_snapshots[@]}"; do
+			# $1 is a glob
+			if [[ $s == $1 ]]; then
+				zvol_rollback="$s"
+				break
+			fi
+		done
+	fi
+
+}
+
+zvol_disks_setup() {
+	local LIBSH_LOG_PREFIX="qemu::zvol_setup($GUEST_NAME)"
+	log "starting"
+
+	get_zvol_disks | while read file; do
+		if [[ -b "$file" ]] && is_scratch_vm; then
+			zvol="${file#/dev/zvol/}"
+			zfs list -Ho name -t snapshot "$zvol" | readarray -t zvol_snapshots
+			if ! [[ ${zvol_snapshots+set} ]]; then
+				log "zvol: no snapshots for $zvol"
+				continue
+			fi
+
+			zvol_rollback=
+			for target in '*@0fs' '*@0'; do
+				for s in "${zvol_snapshots[@]}"; do
+					if [[ $s == $target ]]; then
+						zvol_rollback="$s"
+						break 2
+					fi
+				done
+			done
+			if ! [[ $zvol_rollback ]]; then
+				log "zvol: $zvol: rolling back to last snapshot"
+				zvol_rollback="${zvol_snapshots[-1]}"
+			fi
+			log "zvol: $zvol: rolling back to ${zvol_rollback#$zvol}"
+			zfs rollback "$zvol_rollback" || die "zvol: $vol: rollback failed"
+		fi
+	done
+}
+
 zram_disks_setup() {
 	local LIBSH_LOG_PREFIX="qemu::zram_setup($GUEST_NAME)"
 	local file size target
@@ -814,6 +872,7 @@ hook)
 		cgroup_setup
 		scratch_disks_setup
 		zram_disks_setup
+		zvol_disks_setup
 		nvidia_setup
 		;;
 	'release/end')

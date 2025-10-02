@@ -1,0 +1,23 @@
+[Match]
+Name=podbr-lab2
+
+[Link]
+RequiredForOnline=no
+ActivationPolicy=manual
+
+[Network]
+KeepConfiguration=yes
+ConfigureWithoutCarrier=yes
+IgnoreCarrierLoss=yes
+
+# LinkLocalAddressing=no
+# IPv6AcceptRA=no
+
+LLMNR=true
+MulticastDNS=true
+
+DNS=10.66.82.1
+DNS=fd00:6682::1
+Domains=~dns.podman ~2.8.6.6.0.0.d.f.ip6.arpa ~82.66.10.in-addr.arpa
+DNSSEC=no
+DNSOverTLS=no

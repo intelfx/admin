@@ -1,0 +1,21 @@
+{
+    "name": "podman",
+    "driver": "bridge",
+    "network_interface": "podbr-podman",
+    "subnets": [
+        {
+            "subnet": "10.66.80.0/24",
+            "gateway": "10.66.80.1"
+        },
+        {
+            "subnet": "fd00:6680::/64",
+            "gateway": "fd00:6680::1"
+        }
+    ],
+    "ipv6_enabled": true,
+    "internal": false,
+    "dns_enabled": true,
+    "ipam_options": {
+        "driver": "host-local"
+    }
+}

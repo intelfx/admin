@@ -1,0 +1,21 @@
+{
+     "name": "lab1",
+     "driver": "bridge",
+     "network_interface": "podbr-lab1",
+     "subnets": [
+          {
+               "subnet": "10.66.81.0/24",
+               "gateway": "10.66.81.1"
+          },
+          {
+               "subnet": "fd00:6681::/64",
+               "gateway": "fd00:6681::1"
+          }
+     ],
+     "ipv6_enabled": true,
+     "internal": false,
+     "dns_enabled": true,
+     "ipam_options": {
+          "driver": "host-local"
+     }
+}

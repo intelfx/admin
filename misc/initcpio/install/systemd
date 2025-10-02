@@ -13,8 +13,18 @@ add_systemd_unit() {
         return 1
     fi
 
+    # add main unit
     add_file "$unit"
 
+    # add drop-ins
+    for dep in {/etc,/usr/lib}/systemd/system/"${unit##*/}.d"/*.conf; do
+        if [[ -e $dep ]]; then
+            add_file "$dep"
+        fi
+    done
+
+    # add referenced binaries and hard dependencies specified in the unit
+    # (including drop-ins)
     while IFS='=' read -r key values; do
         read -ra values <<< "$values"
 
@@ -34,7 +44,9 @@ add_systemd_unit() {
                 ;;
         esac
 
-    done <"$unit"
+    # maybe: shopt -s nullglob;
+    #        cat "$unit" {/etc,/usr/lib}/systemd/system/"${unit##*/}.d"/*.conf
+    done < <(systemd-analyze cat-config "$unit")
 
     # preserve reverse dependency links
     for dep in {/etc,/usr/lib}/systemd/system/*.{wants,requires}/"${unit##*/}"; do

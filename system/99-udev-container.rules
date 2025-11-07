@@ -1,0 +1,13 @@
+ACTION!="add|change|remove", GOTO="end"
+
+SUBSYSTEM=="block", KERNEL=="loop*", ENV{CONTAINER}="stratofortress"
+SUBSYSTEM=="block", KERNEL=="nbd*", ENV{CONTAINER}="stratofortress"
+SUBSYSTEM=="block", KERNEL=="zd*", ENV{CONTAINER}="stratofortress"
+# ...add your rules here...
+
+ENV{CONTAINER}!="?*", GOTO="end"
+
+ACTION!="remove", RUN+="/etc/admin/scripts/system/udev-container.sh add %E{CONTAINER} %S%p %N $links"
+ACTION=="remove", RUN+="/etc/admin/scripts/system/udev-container.sh remove %E{CONTAINER} %S%p %N $links"
+
+LABEL="end"

@@ -147,6 +147,11 @@ rm -f ${DEVNODE@Q}
 }
 
 action_stage() (
+        # do not stage actions executed as part the list of staged actions
+        if [[ "${UDEV_CONTAINER_EXECUTE+set}" ]]; then
+                return
+        fi
+
         exec 9<>"$STATE_FILE"
         flock 9
 
@@ -167,6 +172,8 @@ action_stage() (
 )
 
 action_execute() (
+        export UDEV_CONTAINER_EXECUTE=1
+
         exec 9<>"$STATE_FILE"
         flock 9
 

@@ -100,6 +100,8 @@ action_remove() {
 
         log "$DEVNODE: links=(${LINKS[*]@Q}), sysfspath=${SYSPATH@Q}"
 
+        LINKS=( "${LINKS[@]/#/'/dev/'}" )
+
         # build a POSIX sh script to inject into container
         cmd="main() { set -ex"
 

@@ -15,6 +15,7 @@ _usage() {
         cat <<EOF
 Usage:
         ${0##*/} add|remove <container> <sysfs-path> <dev-path> [links...]
+        ${0##*/} execute <container>
 Usage in udev rules:
         ACTION!="remove", RUN+="$0 add %E{CONTAINER} %S%p %N \$links
         ACTION=="remove", RUN+="$0 remove %E{CONTAINER} %S%p %N \$links
@@ -27,9 +28,10 @@ EOF
 #
 
 STATE_DIR="/run/hacks/udev-container"
+STATE_FILE="$STATE_DIR/known"
 LOCK_FILE="$STATE_DIR/lock"
 
-if (( $# < 4 )); then
+if (( $# < 1 )); then
         usage "wrong number of positional arguments"
 fi
 
@@ -38,6 +40,25 @@ CONTAINER="$2"
 SYSPATH="$3"
 DEVNODE="$4"
 LINKS=("${@:5}")
+
+case "$ACTION" in
+add|remove)
+        if (( $# < 4 )); then
+                usage "wrong number of positional arguments"
+        fi
+        ;;
+
+execute)
+        if (( $# != 2 )); then
+                usage "wrong number of positional arguments"
+        fi
+        CONTAINER="$2"
+        ;;
+
+*)
+        die "invalid action argument: ${ACTION@Q}"
+        ;;
+esac
 
 #
 # function
@@ -125,6 +146,47 @@ rm -f ${DEVNODE@Q}
         execute "$CONTAINER" "$cmd"
 }
 
+action_stage() (
+        exec 9<>"$STATE_FILE"
+        flock 9
+
+        log "staging action: ${*@Q}"
+
+        case "$ACTION" in
+        add)
+                sed -r "\\&^'add' ${CONTAINER@Q} ${SYSPATH@Q} &d" -i "$STATE_FILE"
+                echo "${*@Q}" >>"$STATE_FILE"
+                ;;
+        remove)
+                sed -r "\\&^'add' ${CONTAINER@Q} ${SYSPATH@Q} &d" -i "$STATE_FILE"
+                ;;
+        *)
+                die "invalid action argument"
+                ;;
+        esac
+)
+
+action_execute() (
+        exec 9<>"$STATE_FILE"
+        flock 9
+
+        log "executing staged actions"
+
+        local -a lines
+        readarray -t lines <&9
+        exec 9>&-
+
+        local line rc=0
+        for line in "${lines[@]}"; do
+                if [[ $line =~ ^[[:space:]]*($|\#.*) ]]; then
+                        continue
+                fi
+                eval "${0@Q} $line" || rc=1
+        done
+
+        return $rc
+)
+
 
 #
 # main
@@ -137,6 +199,13 @@ mkdir -p "$STATE_DIR"
 
 LIBSH_LOG_PREFIX="$ACTION($CONTAINER)"
 
+# keep track of eligible devices, whike the container is running or not
+# (a container can be rebooted multiple times)
+case "$ACTION" in
+add|remove)
+        action_stage "$@" ;;
+esac
+
 if ! machinectl list --no-legend | grep -q "^$CONTAINER"; then
         log "container is not running, exiting"
         exit 2
@@ -147,6 +216,8 @@ add)
         action_add ;;
 remove)
         action_remove ;;
+execute)
+        action_execute ;;
 *)
         die "invalid action argument" ;;
 esac

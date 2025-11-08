@@ -213,10 +213,10 @@ add|remove)
         action_stage "$@" ;;
 esac
 
-if ! systemctl -M "$CONTAINER" is-system-running &>/dev/null; then
-        # log "container is not running, exiting"
-        exit
-fi
+case "$(systemctl -M "$CONTAINER" is-system-running 2>/dev/null)" in
+running|starting) ;;
+*) exit ;;
+esac
 
 case "$ACTION" in
 add)

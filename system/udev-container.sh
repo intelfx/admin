@@ -32,7 +32,7 @@ STATE_FILE="$STATE_DIR/known"
 LOCK_FILE="$STATE_DIR/lock"
 
 if (( $# < 1 )); then
-        usage "wrong number of positional arguments"
+        usage "wrong number of positional arguments (none provided)"
 fi
 
 ACTION="$1"
@@ -44,13 +44,13 @@ LINKS=("${@:5}")
 case "$ACTION" in
 add|remove)
         if (( $# < 4 )); then
-                usage "wrong number of positional arguments"
+                usage "wrong number of positional arguments (expected 4 or more): ${*@Q}"
         fi
         ;;
 
 execute)
         if (( $# != 2 )); then
-                usage "wrong number of positional arguments"
+                usage "wrong number of positional arguments (expected 2): ${*@Q}"
         fi
         CONTAINER="$2"
         ;;

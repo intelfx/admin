@@ -2,9 +2,23 @@ ACTION!="add|change|remove", GOTO="end"
 # ignore devices that do not have a /dev node
 ENV{DEVNAME}!="/dev/?*", GOTO="end"
 
-SUBSYSTEM=="block", KERNEL=="loop*", ENV{CONTAINER}="stratofortress"
-SUBSYSTEM=="block", KERNEL=="nbd*", ENV{CONTAINER}="stratofortress"
-SUBSYSTEM=="block", KERNEL=="zd*", ENV{CONTAINER}="stratofortress"
+SUBSYSTEM!="block", GOTO="notblock"
+KERNEL=="loop*", ENV{CONTAINER}="stratofortress"
+KERNEL=="nbd*", ENV{CONTAINER}="stratofortress"
+KERNEL=="zd*", ENV{CONTAINER}="stratofortress"
+LABEL="notblock"
+
+SUBSYSTEM!="misc", GOTO="notmisc"
+KERNEL=="loop-control", ENV{CONTAINER}="stratofortress"
+KERNEL=="fuse", ENV{CONTAINER}="stratofortress"
+KERNEL=="cpu_dma_latency", ENV{CONTAINER}="stratofortress"
+KERNEL=="kvm", ENV{CONTAINER}="stratofortress"
+KERNEL=="zfs", ENV{CONTAINER}="stratofortress"
+KERNEL=="vhost*", ENV{CONTAINER}="stratofortress"
+KERNEL=="vsock*", ENV{CONTAINER}="stratofortress"
+LABEL="notmisc"
+
+SUBSYSTEM=="drm", ENV{CONTAINER}="stratofortress"
 # ...add your rules here...
 
 ENV{CONTAINER}!="?*", GOTO="end"

@@ -70,7 +70,8 @@ execute() {
         log "executing script: $script"
 
         # if this fails, grant SystemCallFilter=@mount to your execution environment (i.e., systemd-udevd.service)
-        systemd-run -M "$container" --pipe --wait --collect --service-type oneshot /usr/bin/env sh -c "$script" </dev/null
+        systemd-run --quiet --machine="$container" --pipe --wait --collect --service-type=oneshot \
+                /usr/bin/env sh -c "$script" </dev/null
         # fallback:
         # machinectl shell "$container" /bin/sh -c "$script" </dev/null
 }

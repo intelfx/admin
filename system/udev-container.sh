@@ -5,8 +5,8 @@
 set -eo pipefail
 shopt -s lastpipe
 
-if ! [[ -t 2 || -t 1 || -t 0 ]] && ! [[ ${JOURNAL_STREAM+set} ]]; then
-        exec systemd-cat --identifier="udev-container" --level-prefix=true "$0" "$@"
+if ! [[ -t 2 || -t 1 || -t 0 ]] && ! [[ ${UDEV_CONTAINER_REEXEC+set} ]]; then
+        UDEV_CONTAINER_REEXEC=1 exec systemd-cat --identifier="udev-container" --level-prefix=true "$0" "$@"
 fi
 
 . /etc/admin/scripts/lib/lib.sh

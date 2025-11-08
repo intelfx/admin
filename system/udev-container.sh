@@ -37,7 +37,6 @@ ACTION="$1"
 CONTAINER="$2"
 SYSPATH="$3"
 DEVNODE="$4"
-shift 4
 LINKS=("${@:5}")
 
 #

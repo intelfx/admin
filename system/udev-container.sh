@@ -213,7 +213,7 @@ add|remove)
         action_stage "$@" ;;
 esac
 
-if ! machinectl list --no-legend | grep -q "^$CONTAINER"; then
+if ! systemctl -M "$CONTAINER" is-system-running &>/dev/null; then
         # log "container is not running, exiting"
         exit
 fi

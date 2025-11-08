@@ -67,7 +67,7 @@ esac
 execute() {
         local container="$1" script="$2"
 
-        log "executing script: $script"
+        # log "executing script: $script"
 
         # if this fails, grant SystemCallFilter=@mount to your execution environment (i.e., systemd-udevd.service)
         systemd-run --quiet --machine="$container" --pipe --wait --collect --service-type=oneshot \
@@ -79,22 +79,21 @@ execute() {
 action_add() {
         local devtype cmd
 
-        log "${DEVNODE}: links=(${LINKS[*]@Q}), sysfspath=${SYSPATH@Q}"
-
-        LINKS=( "${LINKS[@]/#/'/dev/'}" )
-
         if [[ -b "$DEVNODE" ]]; then devtype="b"
         elif [[ -c "$DEVNODE" ]]; then devtype="c"
-        else die "${DEVNODE@Q}: not a block or character device node"
+        else die "$DEVNODE: not a block or character device node"
         fi
-        log "${DEVNODE}: type=$devtype"
+
+        log "$DEVNODE: type=$devtype, links=(${LINKS[*]@Q})"
+
+        LINKS=( "${LINKS[@]/#/'/dev/'}" )
 
         # we are (ab)using `stat --format=%N` to shell-quote the arg,
         # but it not only quotes the arg but also appends "-> 'target'" garbage if arg is a symlink
         [[ ! -L "$DEVNODE" ]] || die "internal error: devnode ${DEVNODE@Q} is a symlink"
 
         # build a POSIX sh script to inject into container
-        cmd="main() { set -ex"
+        cmd="main() { set -e"
 
         # create the main node (use `stat --format` for a cute hack)
         cmd+="
@@ -120,12 +119,12 @@ done
 action_remove() {
         local devtype cmd
 
-        log "$DEVNODE: links=(${LINKS[*]@Q}), sysfspath=${SYSPATH@Q}"
+        log "$DEVNODE: removing, links=(${LINKS[*]@Q})"
 
         LINKS=( "${LINKS[@]/#/'/dev/'}" )
 
         # build a POSIX sh script to inject into container
-        cmd="main() { set -ex"
+        cmd="main() { set -e"
 
         # remove the symlinks (do not bother about empty parent directories) first
         # only do this if links exist to avoid emitting an empty loop
@@ -151,7 +150,7 @@ action_stage() (
         exec 9<>"$STATE_FILE"
         flock 9
 
-        log "staging action: ${*@Q}"
+        log "$DEVNODE: staging"
 
         case "$ACTION" in
         add)
@@ -208,8 +207,8 @@ add|remove)
 esac
 
 if ! machinectl list --no-legend | grep -q "^$CONTAINER"; then
-        log "container is not running, exiting"
-        exit 2
+        # log "container is not running, exiting"
+        exit
 fi
 
 case "$ACTION" in
@@ -222,5 +221,3 @@ execute)
 *)
         die "invalid action argument" ;;
 esac
-
-log "done"

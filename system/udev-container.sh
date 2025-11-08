@@ -14,7 +14,7 @@ fi
 _usage() {
         cat <<EOF
 Usage:
-        ${0##*/} add|change|remove <container> <sysfs-path> <dev-path> [links...]
+        ${0##*/} add|remove <container> <sysfs-path> <dev-path> [links...]
 Usage in udev rules:
         ACTION!="remove", RUN+="$0 add %E{CONTAINER} %S%p %N \$links
         ACTION=="remove", RUN+="$0 remove %E{CONTAINER} %S%p %N \$links
@@ -143,11 +143,9 @@ if ! machinectl list --no-legend | grep -q "^$CONTAINER"; then
 fi
 
 case "$ACTION" in
-add|change)
-        LIBSH_LOG_PREFIX="add($CONTAINER)"
+add)
         action_add ;;
 remove)
-        LIBSH_LOG_PREFIX="remove($CONTAINER)"
         action_remove ;;
 *)
         die "invalid action argument" ;;

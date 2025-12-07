@@ -1,0 +1,18 @@
+[Unit]
+Description=Tell chrony to go online
+Documentation=man:chronyc(1)
+Requisite=chronyd.service
+After=chronyd.service
+Requires=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/etc/admin/scripts/misc/chrony.sh connectivity-change
+RemainAfterExit=no
+User=chrony
+
+RestrictAddressFamilies=AF_UNIX
+
+[Install]
+WantedBy=multi-user.target

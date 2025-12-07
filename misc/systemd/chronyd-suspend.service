@@ -1,0 +1,22 @@
+[Unit]
+Description=Prepare chrony for system suspend
+Documentation=man:chronyc(1)
+# Requisite=chronyd.service
+# After=chronyd.service
+ConditionPathExists=/run/chrony/chronyd.pid
+StopWhenUnneeded=yes
+
+[Service]
+Type=oneshot
+ExecStart=/etc/admin/scripts/misc/chrony.sh suspend
+ExecStop=/etc/admin/scripts/misc/chrony.sh resume
+RemainAfterExit=yes
+
+# ExecStart=/usr/bin/systemctl stop chronyd.service
+# ExecStop=/usr/bin/systemctl start --no-block chronyd.service
+
+# User=chrony
+# RestrictAddressFamilies=AF_UNIX
+
+[Install]
+WantedBy=sleep.target

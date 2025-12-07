@@ -1,0 +1,6 @@
+#!/bin/bash
+
+IFACE="$1"
+ACTION="$2"
+
+exec /etc/admin/scripts/misc/chrony.sh "$ACTION"

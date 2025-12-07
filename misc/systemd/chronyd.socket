@@ -1,0 +1,21 @@
+[Unit]
+Description=NTP server sockets
+
+[Socket]
+Service=chronyd.service
+BindIPv6Only=ipv6-only
+# Control
+ListenDatagram=/var/run/chrony/chronyd.sock
+SocketUser=chrony
+SocketGroup=chrony
+SocketMode=0644
+DirectoryMode=0750
+# NTP server
+# ListenDatagram=0.0.0.0:123
+# ListenDatagram=[::]:123
+# NTS-KE server
+# ListenStream=0.0.0.0:4460
+# ListenStream=[::]:4460
+
+[Install]
+WantedBy=sockets.target

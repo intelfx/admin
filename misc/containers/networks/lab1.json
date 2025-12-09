@@ -1,5 +1,6 @@
 {
      "name": "lab1",
+     "id": "36ab703e78542e3b5a103303bd655f23d94dafc8bf8724608c5264fbe281a35b",
      "driver": "bridge",
      "network_interface": "podbr-lab1",
      "subnets": [

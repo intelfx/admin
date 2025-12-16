@@ -215,7 +215,7 @@ esac
 
 case "$(systemctl -M "$CONTAINER" is-system-running 2>/dev/null)" in
 running|starting) ;;
-*) exit ;;
+*) exit 0 ;;
 esac
 
 case "$ACTION" in

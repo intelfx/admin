@@ -220,7 +220,7 @@ add|remove)
 esac
 
 case "$(systemctl -M "$CONTAINER" is-system-running 2>/dev/null)" in
-running|starting) ;;
+running|starting|degraded) ;;
 *) exit 0 ;;
 esac
 

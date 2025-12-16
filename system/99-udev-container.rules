@@ -16,6 +16,7 @@ KERNEL=="kvm", ENV{CONTAINER}="stratofortress"
 KERNEL=="zfs", ENV{CONTAINER}="stratofortress"
 KERNEL=="vhost*", ENV{CONTAINER}="stratofortress"
 KERNEL=="vsock*", ENV{CONTAINER}="stratofortress"
+KERNEL=="btrfs-control", ENV{CONTAINER}="stratofortress"
 LABEL="notmisc"
 
 SUBSYSTEM=="drm", ENV{CONTAINER}="stratofortress"

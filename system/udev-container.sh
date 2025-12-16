@@ -169,6 +169,8 @@ action_stage() (
                 die "invalid action argument"
                 ;;
         esac
+
+        log "$DEVNODE: done"
 )
 
 action_execute() (
@@ -183,14 +185,18 @@ action_execute() (
         readarray -t lines <&9
         exec 9>&-
 
-        local line rc=0
+        local line rc=0 ok=0 fail=0
         for line in "${lines[@]}"; do
                 if [[ $line =~ ^[[:space:]]*($|\#.*) ]]; then
                         continue
                 fi
-                eval "${0@Q} $line" || rc=1
+                eval "${0@Q} $line" \
+                        && (( ++ok )) \
+                        || (( ++fail ))
         done
+        rc="$(( fail ? 1 : 0 ))"
 
+        log "done, ok=$ok, fail=$fail, rc=$rc"
         return $rc
 )
 

@@ -119,7 +119,7 @@ deploy_openwrt() {
 }
 
 deploy_outpost() {
-	local LIBSH_LOG_PREFIX="deploy_openwrt($1)"
+	local LIBSH_LOG_PREFIX="deploy_outpost($1)"
 	local host="$1"
 	local identity="$2"
 	shift 2

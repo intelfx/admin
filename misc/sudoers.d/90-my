@@ -22,7 +22,8 @@ Defaults env_keep += "ORIG_TERM"
 Defaults env_keep += "DOCKER_HOST CONTAINER_HOST"
 
 Defaults !secure_path
-Defaults !use_pty
+Defaults>root !use_pty
+Defaults>root runcwd = *
 Defaults timestamp_type = global
 Defaults insults
 

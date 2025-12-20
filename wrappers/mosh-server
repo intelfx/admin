@@ -36,5 +36,6 @@ MOSH_ARGS+=(
 # if systemd is configured to clean up user sessions.
 # TODO: extend systemd-run to exit as soon as the main process stdout is
 # closed, and run mosh-server in a service rather than a scope.
-exec systemd-run --user --scope \
+# exec systemd-run --user --scope \
+exec \
 	/usr/bin/mosh-server "${MOSH_ARGS[@]}" "$@"

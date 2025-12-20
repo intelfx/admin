@@ -222,19 +222,19 @@ findctl_run FIND \
 readarray -t targets_files_p <"$targets_files"
 
 echo "BLACKLIST:"
-cat $blacklist; echo
+print_array "${blacklist_p[@]}"; echo
 
 echo "EXCLUSIONS:"
-cat $exclusions; echo
+print_array "${exclusions_p[@]}"; echo
 
 echo "INCLUSIONS:"
-cat $inclusions; echo
+print_array "${inclusions_p[@]}"; echo
 
 echo "BORG REPOS:"
-cat $targets_borg; echo
+print_array "${targets_borg_p[@]}"; echo
 
 echo "MISC FILES:"
-cat $targets_files; echo
+print_array "${targets_files_p[@]}"; echo
 
 if (( DRY_RUN )); then
 	exit

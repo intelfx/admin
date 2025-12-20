@@ -298,7 +298,11 @@ done
 
 for dir in "${targets_borg_p[@]}"; do
 	name="$BORGBASE_NAME/${dir#./}"
-	url="$("$SCRIPT_DIR/borgbase-get-repo.sh" "$name" "$BORGBASE_CREATE_ARGS")"
+	if ! url="$("$SCRIPT_DIR/borgbase-get-repo.sh" "$name" "$BORGBASE_CREATE_ARGS")"; then
+		err "$dir: failed to acquire BorgBase repo $name"
+		RC=1
+		continue
+	fi
 	log "$dir: backing up to BorgBase repo $name at $url"
 
 	do_rsync \
@@ -310,7 +314,11 @@ done
 
 for dir in "${targets_borg_in_p[@]}"; do
 	name="$BORGBASE_NAME/${dir#./}"
-	url="$("$SCRIPT_DIR/borgbase-get-repo.sh" "$name" "$BORGBASE_CREATE_ARGS")"
+	if ! url="$("$SCRIPT_DIR/borgbase-get-repo.sh" "$name" "$BORGBASE_CREATE_ARGS")"; then
+		err "$dir: failed to acquire BorgBase repo $name"
+		RC=1
+		continue
+	fi
 	log "$dir: backing up _from_ BorgBase repo $name at $url"
 
 	do_rsync \
@@ -325,7 +333,11 @@ sed -r 's|^\./|/|' \
 	-i "$exclusions" \
 	-i "$inclusions" \
 
-url="$("$SCRIPT_DIR/borgbase-get-repo.sh" "$BORGBASE_NAME_CATCH_ALL" "$BORGBASE_CREATE_ARGS")"
+if ! url="$("$SCRIPT_DIR/borgbase-get-repo.sh" "$BORGBASE_NAME_CATCH_ALL" "$BORGBASE_CREATE_ARGS")"; then
+	err "$dir: failed to acquire BorgBase repo $BORGBASE_NAME_CATCH_ALL"
+	RC=1
+	continue
+fi
 log ".: backing up all other files to BorgBase repo $BORGBASE_NAME_CATCH_ALL at $url"
 do_rsync \
 	--files-from="$targets_files" \
@@ -335,12 +347,16 @@ do_rsync \
 	"$url:" \
 	"${RSYNC_ARGS[@]}"
 
-if (( NEED_RERUN && RETRY_COUNT < RETRY_COUNT_MAX )); then
-	warn "Some directories were skipped -- restarting in a minute"
+if (( RC )); then reason="Some errors were encountered"
+elif (( NEED_RERUN )); then reason="Some directories were skipped"
+fi
+
+if (( (RC || NEED_RERUN) && RETRY_COUNT < RETRY_COUNT_MAX )); then
+	warn "$reason -- restarting in a minute"
 	sleep 60
 	exec "$SCRIPT_PATH" -Xretry-count=$(( RETRY_COUNT + 1 )) "${ALL_ARGS[@]}"
-elif (( NEED_RERUN )); then
-	err "Some directories were skipped -- bailing out, too many retries"
+elif (( RC || NEED_RERUN )); then
+	err "$reason -- bailing out, too many retries"
 	RC=1
 fi
 

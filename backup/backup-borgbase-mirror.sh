@@ -93,7 +93,7 @@ do_rsync() {
 		delay_updates_flag=()
 	fi
 
-	Trace rsync \
+	dry_run rsync \
 		"${RSYNC_PROGRESS_ARGS[@]}" \
 		--human-readable \
 		--delete-after \
@@ -256,16 +256,16 @@ print_array "${targets_borg_in_p[@]}"; echo
 echo "MISC FILES:"
 print_array "${targets_files_p[@]}"; echo
 
-if (( DRY_RUN )); then
-	exit
-fi
-
 
 #
 # Borg special handling: compact (conservatively) before uploading
 #
 
 for dir in "${targets_borg_p[@]}"; do
+	if (( DRY_RUN )); then
+		continue
+	fi
+
 	if [[ -e "$dir/lock.exclusive" ]]; then
 		log "$dir: Borg repository is busy, scheduling a rerun"
 		NEED_RERUN=1

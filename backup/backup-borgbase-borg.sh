@@ -116,11 +116,12 @@ RC=0
 
 for target in "${BORG_TARGETS[@]}"; do
 	name="$(borgbase_name_by_target "$target")"
-	if ! url="$("$SCRIPT_DIR/borgbase-get-repo.sh" "$name" "$BORGBASE_CREATE_ARGS"):repo"; then
-		err "$target: failed to acquire BorgBase repo at $url"
+	if ! url="$("$SCRIPT_DIR/borgbase-get-repo.sh" "$name" "$BORGBASE_CREATE_ARGS")"; then
+		err "$target: failed to acquire BorgBase repo $name"
 		RC=1
 		continue
 	fi
+	url="$url:repo"
 	BORG_URLS[$target]="$url"
 
 	if (( OP_CREATE )); then

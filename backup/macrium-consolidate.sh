@@ -44,6 +44,7 @@ if [[ -e "$IMAGESET_DIR/backup_running" || -e "$IMAGESET_DIR/merge_running" ]]; 
 	die "$IMAGESET_DIR: Macrium Reflect directory is busy"
 fi
 
+DID_WORK=0
 find "$IMAGESET_DIR" -maxdepth 1 -type f -name '*-00-00.mrimg' -printf '%f\n' | readarray -t macrium_fulls
 for file in "${macrium_fulls[@]}"; do
 	imageid="${file%-00-00.mrimg}"
@@ -127,6 +128,7 @@ for file in "${macrium_fulls[@]}"; do
 
 	# consolidate everything up to "$last_file"
 	for line in "${incrementals[@]}"; do
+		(( ++DID_WORK ))
 		read file mtime <<< "$line"
 		./consolidate/consolidate.sh "$IMAGESET_DIR/$full_file" "$IMAGESET_DIR/$file"
 		if [[ "$file" == "$last_file" ]]; then
@@ -136,4 +138,6 @@ for file in "${macrium_fulls[@]}"; do
 
 done
 
-xinit /usr/bin/env LC_ALL=C WINEPREFIX=/etc/admin/wineprefix /usr/bin/wineboot -k -- /usr/bin/Xvnc :9 -auth /etc/admin/Xauthority
+if (( DID_WORK )); then
+	xinit /usr/bin/env LC_ALL=C WINEPREFIX=/etc/admin/wineprefix /usr/bin/wineboot -k -- /usr/bin/Xvnc :9 -auth /etc/admin/Xauthority
+fi

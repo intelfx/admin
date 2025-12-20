@@ -217,8 +217,8 @@ hook -EP '(deploy|unchanged)_cert' sentinel.intelfx.name \
 #	-- deploy_openwrt root@router.ditaeon.i.intelfx.name /etc/admin/keys/id_ed25519
 #hook -EP '(deploy|unchanged)_cert' router.sovereign.i.intelfx.name \
 #	-- deploy_routeros admin@router.sovereign.i.intelfx.name /etc/admin/keys/id_rsa
-hook -EP '(deploy|unchanged)_cert' router.nexus.i.intelfx.name \
-	-- deploy_openwrt root@router.tailbefcf.ts.net /etc/admin/keys/id_ed25519
+#hook -EP '(deploy|unchanged)_cert' router.nexus.i.intelfx.name \
+#	-- deploy_openwrt root@router.tailbefcf.ts.net /etc/admin/keys/id_ed25519
 hook -EP '(deploy|unchanged)_cert' outpost.intelfx.name \
 	-- deploy_outpost root@outpost.tailbefcf.ts.net /etc/admin/keys/id_ed25519
 hook -EP '(deploy|unchanged)_cert' enclave.exile.i.intelfx.name \

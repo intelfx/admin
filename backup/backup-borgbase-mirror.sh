@@ -21,6 +21,10 @@ export BORG_PASSCOMMAND="cat /etc/admin/keys/borg"
 export RSYNC_RSH="ssh -oBatchMode=yes -oIdentitiesOnly=yes -i/etc/admin/keys/id_ed25519"
 RSYNC_PARTIAL=".rsync-partial"
 
+LOCAL_PATHS_INVERSE=(
+	# placeholder
+)
+
 BORGBASE_NAME="$(hostname --short)/tank/files"
 BORGBASE_NAME_CATCH_ALL="$BORGBASE_NAME"
 BORGBASE_CREATE_ARGS="region:\"eu\", borgVersion:\"V_1_2_X\", rsyncKeys:[\"18566\"]"
@@ -90,7 +94,6 @@ do_rsync() {
 	fi
 
 	Trace rsync \
-		-arAX --fake-super \
 		"${RSYNC_PROGRESS_ARGS[@]}" \
 		--human-readable \
 		--delete-after \
@@ -221,6 +224,20 @@ findctl_run FIND \
 || true
 readarray -t targets_files_p <"$targets_files"
 
+# HACK: mirror some repos in other direction
+targets_borg_out_p=()
+targets_borg_in_p=()
+for t in "${targets_borg_p[@]}"; do
+	for inv in "${LOCAL_PATHS_INVERSE[@]}"; do
+		if [[ "$t" -ef "$inv" ]]; then
+			targets_borg_in_p+=("$t")
+			continue 2
+		fi
+	done
+	targets_borg_out_p+=("$t")
+done
+targets_borg_p=("${targets_borg_out_p[@]}")
+
 echo "BLACKLIST:"
 print_array "${blacklist_p[@]}"; echo
 
@@ -232,6 +249,9 @@ print_array "${inclusions_p[@]}"; echo
 
 echo "BORG REPOS:"
 print_array "${targets_borg_p[@]}"; echo
+
+echo "BORG REPOS (IN):"
+print_array "${targets_borg_in_p[@]}"; echo
 
 echo "MISC FILES:"
 print_array "${targets_files_p[@]}"; echo
@@ -282,8 +302,21 @@ for dir in "${targets_borg_p[@]}"; do
 	log "$dir: backing up to BorgBase repo $name at $url"
 
 	do_rsync \
+		-arAX --fake-super \
 		"$dir/" \
 		"$url:" \
+		"${RSYNC_ARGS[@]}"
+done
+
+for dir in "${targets_borg_in_p[@]}"; do
+	name="$BORGBASE_NAME/${dir#./}"
+	url="$("$SCRIPT_DIR/borgbase-get-repo.sh" "$name" "$BORGBASE_CREATE_ARGS")"
+	log "$dir: backing up _from_ BorgBase repo $name at $url"
+
+	do_rsync \
+		-rltDH --chmod=ugo=rwX --fake-super \
+		"$url:" \
+		"$dir/" \
 		"${RSYNC_ARGS[@]}"
 done
 

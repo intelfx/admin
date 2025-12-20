@@ -4,7 +4,7 @@ set -eo pipefail
 shopt -s lastpipe
 
 cd "${BASH_SOURCE%/*}"
-. lib/lib.sh || exit 1
+. lib/lib.sh
 
 LOCAL_PATH=/mnt/data
 REMOTE_PATH=/mnt/b2/files

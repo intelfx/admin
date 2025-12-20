@@ -6,7 +6,7 @@ shopt -s lastpipe
 INVOCATION_DIR="$PWD"
 
 cd "${BASH_SOURCE%/*}"
-. lib/lib.sh || exit 1
+. lib/lib.sh
 
 format_time() {
 	local arg="$1"

@@ -6,7 +6,7 @@ shopt -s extglob
 
 SCRIPT_DIR="$(realpath -s "${BASH_SOURCE%/*}")"
 cd "$SCRIPT_DIR"
-. lib/lib.sh || exit 1
+. lib/lib.sh
 
 #
 # constants and setup

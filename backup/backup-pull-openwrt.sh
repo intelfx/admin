@@ -1,4 +1,7 @@
-#!/bin/bash -e
+#!/bin/bash
+
+set -eo pipefail
+shopt -s lastpipe
 
 cd "${BASH_SOURCE%/*}"
 . lib/lib.sh

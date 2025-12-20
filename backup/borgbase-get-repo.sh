@@ -1,10 +1,10 @@
-#!/bin/bash -e
+#!/bin/bash
 
 set -eo pipefail
 shopt -s lastpipe
 
 cd "${BASH_SOURCE%/*}"
-. lib/lib.sh || exit 1
+. lib/lib.sh
 
 #
 # constants

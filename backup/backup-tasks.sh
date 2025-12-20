@@ -1,11 +1,11 @@
-#!/bin/bash -e
+#!/bin/bash
 
 set -eo pipefail
 shopt -s lastpipe
 
 SCRIPT_DIR="$(realpath -s "${BASH_SOURCE%/*}")"
 cd "$SCRIPT_DIR"
-. lib/lib.sh || exit 1
+. lib/lib.sh
 
 RC=0
 FAILED_TASKS=()

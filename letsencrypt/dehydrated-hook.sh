@@ -72,6 +72,29 @@ deploy_localhost() {
 		turnserver.service
 }
 
+
+deploy_ssh() {
+	local LIBSH_LOG_PREFIX="deploy_ssh($1)"
+	local host="$1"
+	local identity="$2"
+	shift 2
+
+	deploy_prep "$@"
+	ssh_prep
+
+	log "copying cert for ${SUBDOMAIN@Q} via sftp"
+	do_sftp <<-EOF || die 'failed to upload cert'
+		mkdir /etc/admin/certs/$SUBDOMAIN
+		put "$PRIVKEY" /etc/admin/certs/$SUBDOMAIN/$SUBDOMAIN.key
+		put "$FULLCHAIN" /etc/admin/certs/$SUBDOMAIN/$SUBDOMAIN.crt
+	EOF
+
+	log "copying OK, now reloading"
+	do_ssh 'systemctl try-reload-or-restart nginx'
+
+	log "reloading OK"
+}
+
 deploy_pikvm() {
 	local LIBSH_LOG_PREFIX="deploy_pikvm($1)"
 	local host="$1"
@@ -198,5 +221,7 @@ hook -EP '(deploy|unchanged)_cert' router.nexus.i.intelfx.name \
 	-- deploy_openwrt root@router.tailbefcf.ts.net /etc/admin/keys/id_ed25519
 hook -EP '(deploy|unchanged)_cert' outpost.intelfx.name \
 	-- deploy_outpost root@outpost.tailbefcf.ts.net /etc/admin/keys/id_ed25519
+hook -EP '(deploy|unchanged)_cert' enclave.exile.i.intelfx.name \
+	-- deploy_ssh root@enclave.tailbefcf.ts.net /etc/admin/keys/id_ed25519
 
 run_actions

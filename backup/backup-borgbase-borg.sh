@@ -13,12 +13,12 @@ cd "$SCRIPT_DIR"
 #
 
 LOCAL_PATH=/mnt/data
-export BORG_BASE_DIR="/mnt/stank/scratch/borg"
-export BORG_RSH="ssh -oBatchMode=yes -oIdentitiesOnly=yes -i/etc/admin/keys/id_ed25519"
+export BORG_BASE_DIR="/mnt/local/Scratch/borg"
+export BORG_RSH="ssh -oBatchMode=yes -oIdentitiesOnly=yes -i/etc/admin/keys/id_borgbase_append_ed25519"
 export BORG_PASSCOMMAND="cat /etc/admin/keys/borg"
 
 BORGBASE_NAME="$(hostname --short)/tank/borg"
-BORGBASE_CREATE_ARGS="region:\"eu\", borgVersion:\"V_1_2_X\", appendOnlyKeys:[\"18566\"]"
+BORGBASE_CREATE_ARGS="region:\"eu\", borgVersion:\"V_1_2_X\", fullAccessKeys:[\"192717\"], appendOnlyKeys:[\"192714\"], rsyncKeys:[\"192715\"]"
 
 BORG_INIT_ARGS=( -e repokey-blake2 )
 BORG_PROGRESS_ARGS=()

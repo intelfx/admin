@@ -1,0 +1,22 @@
+{
+     "name": "lab3",
+     "id": "82f426b033cf41248c50272730f7de47257a1605595a42e2b93d7d890abdea36",
+     "driver": "bridge",
+     "network_interface": "podbr-lab3",
+     "subnets": [
+          {
+               "subnet": "10.66.93.0/24",
+               "gateway": "10.66.93.1"
+          },
+          {
+               "subnet": "fd00:6693::/64",
+               "gateway": "fd00:6693::1"
+          }
+     ],
+     "ipv6_enabled": true,
+     "internal": false,
+     "dns_enabled": true,
+     "ipam_options": {
+          "driver": "host-local"
+     }
+}

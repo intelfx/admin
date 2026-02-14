@@ -1,0 +1,23 @@
+{
+     "name": "internal",
+     "id": "d046cf089af94ab5983ee9ae0206d7431c9977a29a724fb281c239ce09a41b12",
+     "driver": "bridge",
+     "network_interface": "podbr-int",
+     "subnets": [
+          {
+               "subnet": "10.66.90.0/24",
+               "gateway": "10.66.90.1"
+          },
+          {
+               "subnet": "fd00:6690::/64",
+               "gateway": "fd00:6690::1"
+          }
+     ],
+     "ipv6_enabled": true,
+     "internal": true,
+     "dns_enabled": false,
+     "ipam_options": {
+          "driver": "host-local"
+     }
+}
+

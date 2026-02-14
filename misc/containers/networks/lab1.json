@@ -1,16 +1,16 @@
 {
      "name": "lab1",
-     "id": "36ab703e78542e3b5a103303bd655f23d94dafc8bf8724608c5264fbe281a35b",
+     "id": "36ab703e78542e3b5a103303bd655f23d94dafc8bf8724608c5264fbe291a35b",
      "driver": "bridge",
      "network_interface": "podbr-lab1",
      "subnets": [
           {
-               "subnet": "10.66.81.0/24",
-               "gateway": "10.66.81.1"
+               "subnet": "10.66.91.0/24",
+               "gateway": "10.66.91.1"
           },
           {
-               "subnet": "fd00:6681::/64",
-               "gateway": "fd00:6681::1"
+               "subnet": "fd00:6691::/64",
+               "gateway": "fd00:6691::1"
           }
      ],
      "ipv6_enabled": true,

@@ -1,0 +1,22 @@
+{
+     "name": "local",
+     "id": "30935515329c4216923979f67ca3ee9bad0e8931b74b4b92a5bbecb5d94e1787",
+     "driver": "bridge",
+     "network_interface": "podbr-loc",
+     "subnets": [
+          {
+               "subnet": "10.66.99.0/24",
+               "gateway": "10.66.99.1"
+          },
+          {
+               "subnet": "fd00:6699::/64",
+               "gateway": "fd00:6699::1"
+          }
+     ],
+     "ipv6_enabled": true,
+     "internal": false,
+     "dns_enabled": true,
+     "ipam_options": {
+          "driver": "host-local"
+     }
+}

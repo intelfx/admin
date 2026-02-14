@@ -1,0 +1,22 @@
+{
+     "name": "lab4",
+     "id": "444e0868136844928a29949e3c88bf131a2b916f42434f86a0edcc86b4c1e2fe",
+     "driver": "bridge",
+     "network_interface": "podbr-lab4",
+     "subnets": [
+          {
+               "subnet": "10.66.94.0/24",
+               "gateway": "10.66.94.1"
+          },
+          {
+               "subnet": "fd00:6694::/64",
+               "gateway": "fd00:6694::1"
+          }
+     ],
+     "ipv6_enabled": true,
+     "internal": false,
+     "dns_enabled": true,
+     "ipam_options": {
+          "driver": "host-local"
+     }
+}

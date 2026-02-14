@@ -1,0 +1,30 @@
+#
+# libvirt "internal" network
+# IPv4: 10.66.80.0/24
+# IPv6: fd00:be:fcf:6680::/24
+# DNS: .int.libvirt
+#
+
+[Match]
+Name=virbr-int
+
+[Link]
+RequiredForOnline=no
+ActivationPolicy=manual
+
+[Network]
+KeepConfiguration=yes
+ConfigureWithoutCarrier=yes
+IgnoreCarrierLoss=yes
+
+# LinkLocalAddressing=no
+# IPv6AcceptRA=no
+
+LLMNR=true
+MulticastDNS=true
+
+DNS=10.66.80.1
+DNS=fd00:6680::1
+Domains=~int.libvirt ~0.8.6.6.0.0.d.f.ip6.arpa ~80.66.10.in-addr.arpa
+DNSSEC=no
+DNSOverTLS=no

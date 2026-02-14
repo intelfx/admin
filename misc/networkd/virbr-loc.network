@@ -1,5 +1,12 @@
+#
+# libvirt "local" network
+# IPv4: 10.66.88.0/24
+# IPv6: fd00:be:fcf:6688::/24
+# DNS: .libvirt
+#
+
 [Match]
-Name=virbr-nat
+Name=virbr-loc
 
 [Link]
 RequiredForOnline=no
@@ -16,8 +23,8 @@ IgnoreCarrierLoss=yes
 LLMNR=true
 MulticastDNS=true
 
-DNS=10.66.77.1
-DNS=fd00:6677::1
-Domains=~libvirt ~7.7.6.6.0.0.d.f.ip6.arpa ~77.66.10.in-addr.arpa
+DNS=10.66.88.1
+DNS=fd00:6688::1
+Domains=~libvirt ~8.8.6.6.0.0.d.f.ip6.arpa ~88.66.10.in-addr.arpa
 DNSSEC=no
 DNSOverTLS=no

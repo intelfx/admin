@@ -1,5 +1,12 @@
+#
+# Podman "local" network
+# IPv4: 10.66.99.0/24
+# IPv6: fd00:be fcf:6699::/24
+# DNS: .dns.podman
+#
+
 [Match]
-Name=podbr-lab1
+Name=podbr-loc
 
 [Link]
 RequiredForOnline=no
@@ -16,8 +23,9 @@ IgnoreCarrierLoss=yes
 LLMNR=true
 MulticastDNS=true
 
-DNS=10.66.81.1
-DNS=fd00:6681::1
-Domains=~dns.podman ~1.8.6.6.0.0.d.f.ip6.arpa ~81.66.10.in-addr.arpa
+DNS=10.66.99.1
+DNS=fd00:6699::1
+Domains=~dns.podman ~9.9.6.6.0.0.d.f.ip6.arpa ~99.66.10.in-addr.arpa
 DNSSEC=no
 DNSOverTLS=no
+

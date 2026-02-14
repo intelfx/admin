@@ -1,0 +1,30 @@
+#
+# Incus "internal" network
+# IPv4: 10.66.70.0/24
+# IPv6: fd00:be:fcf:6670::/24
+# DNS: .int.incus
+#
+
+[Match]
+Name=incbr-loc
+
+[Link]
+RequiredForOnline=no
+ActivationPolicy=manual
+
+[Network]
+KeepConfiguration=yes
+ConfigureWithoutCarrier=yes
+IgnoreCarrierLoss=yes
+
+# LinkLocalAddressing=no
+# IPv6AcceptRA=no
+
+LLMNR=true
+MulticastDNS=true
+
+DNS=10.66.70.1
+DNS=fd00:6670::1
+Domains=~int.incus ~0.7.6.6.0.0.d.f.ip6.arpa ~70.66.10.in-addr.arpa
+DNSSEC=no
+DNSOverTLS=no

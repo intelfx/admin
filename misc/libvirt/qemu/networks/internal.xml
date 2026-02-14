@@ -1,0 +1,24 @@
+<!--
+WARNING: THIS IS AN AUTO-GENERATED FILE. CHANGES TO IT ARE LIKELY TO BE
+OVERWRITTEN AND LOST. Changes to this xml configuration should be made using:
+  virsh net-edit internal
+or other application using the libvirt API.
+-->
+
+<network>
+  <name>internal</name>
+  <uuid>33b91d1e-9473-40dc-8f95-3ee109d54d76</uuid>
+  <bridge name='virbr-int' stp='on' delay='0'/>
+  <mac address='52:54:00:f0:05:37'/>
+  <domain name='int.libvirt'/>
+  <ip address='10.66.80.1' netmask='255.255.255.0'>
+    <dhcp>
+      <range start='10.66.80.128' end='10.66.80.254'/>
+    </dhcp>
+  </ip>
+  <ip family='ipv6' address='fd00:6680::1' prefix='64'>
+    <dhcp>
+      <range start='fd00:6680::100' end='fd00:6680::1ff'/>
+    </dhcp>
+  </ip>
+</network>

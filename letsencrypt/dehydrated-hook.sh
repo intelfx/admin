@@ -208,6 +208,8 @@ hook -EP '(deploy|unchanged)_cert' anystation.vigil.i.intelfx.name \
 #	-- deploy_routeros admin@router.sovereign.i.intelfx.name /etc/admin/keys/id_rsa
 #hook -EP '(deploy|unchanged)_cert' router.nexus.i.intelfx.name \
 #	-- deploy_openwrt root@router.tailbefcf.ts.net /etc/admin/keys/id_ed25519
+hook -EP '(deploy|unchanged)_cert' router.exile.i.intelfx.name \
+	-- deploy_routeros admin@router.exile.i.intelfx.name /etc/admin/keys/id_ed25519
 hook -EP '(deploy|unchanged)_cert' enclave.exile.i.intelfx.name \
 	-- deploy_ssh root@enclave.tailbefcf.ts.net /etc/admin/keys/id_ed25519
 hook -EP '(deploy|unchanged)_cert' sentinel.intelfx.name \

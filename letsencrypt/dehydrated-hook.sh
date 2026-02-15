@@ -200,6 +200,8 @@ hook -E '(deploy|clean)_challenge' '.*intelfx\.name' \
 	-- "$hookdir"/dehydrated-scripts/challenge-dns-01.py --config /etc/admin/dns/intelfx.name.yaml --
 hook -EP '(deploy|unchanged)_cert' stratofortress.vigil.i.intelfx.name \
 	-- deploy_localhost
+hook -EP '(deploy|unchanged)_cert' anystation.vigil.i.intelfx.name \
+	-- deploy_ssh root@anystation.tailbefcf.ts.net /etc/admin/keys/id_ed25519
 #hook -EP '(deploy|unchanged)_cert' router.ditaeon.i.intelfx.name \
 #	-- deploy_openwrt root@router.ditaeon.i.intelfx.name /etc/admin/keys/id_ed25519
 #hook -EP '(deploy|unchanged)_cert' router.sovereign.i.intelfx.name \

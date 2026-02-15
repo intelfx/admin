@@ -200,17 +200,17 @@ hook -E '(deploy|clean)_challenge' '.*intelfx\.name' \
 	-- "$hookdir"/dehydrated-scripts/challenge-dns-01.py --config /etc/admin/dns/intelfx.name.yaml --
 hook -EP '(deploy|unchanged)_cert' stratofortress.vigil.i.intelfx.name \
 	-- deploy_localhost
-hook -EP '(deploy|unchanged)_cert' sentinel.intelfx.name \
-	-- deploy_pikvm root@sentinel.tailbefcf.ts.net /etc/admin/keys/id_ed25519
 #hook -EP '(deploy|unchanged)_cert' router.ditaeon.i.intelfx.name \
 #	-- deploy_openwrt root@router.ditaeon.i.intelfx.name /etc/admin/keys/id_ed25519
 #hook -EP '(deploy|unchanged)_cert' router.sovereign.i.intelfx.name \
 #	-- deploy_routeros admin@router.sovereign.i.intelfx.name /etc/admin/keys/id_rsa
 #hook -EP '(deploy|unchanged)_cert' router.nexus.i.intelfx.name \
 #	-- deploy_openwrt root@router.tailbefcf.ts.net /etc/admin/keys/id_ed25519
-hook -EP '(deploy|unchanged)_cert' outpost.intelfx.name \
-	-- deploy_ssh root@outpost.tailbefcf.ts.net /etc/admin/keys/id_ed25519
 hook -EP '(deploy|unchanged)_cert' enclave.exile.i.intelfx.name \
 	-- deploy_ssh root@enclave.tailbefcf.ts.net /etc/admin/keys/id_ed25519
+hook -EP '(deploy|unchanged)_cert' sentinel.intelfx.name \
+	-- deploy_pikvm root@sentinel.tailbefcf.ts.net /etc/admin/keys/id_ed25519
+hook -EP '(deploy|unchanged)_cert' outpost.intelfx.name \
+	-- deploy_ssh root@outpost.tailbefcf.ts.net /etc/admin/keys/id_ed25519
 
 run_actions

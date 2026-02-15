@@ -60,6 +60,21 @@ deploy_prep() {
 	fi
 }
 
+_deploy_reload() {
+	local host="$1"
+
+	printf "%s\n" \
+		nginx.service
+
+	case "$host" in
+	stratofortress*|outpost*)
+		printf "%s\n" \
+			turnserver.service
+		;;
+	esac
+
+}
+
 deploy_localhost() {
 	local LIBSH_LOG_PREFIX="deploy_localhost"
 
@@ -67,11 +82,8 @@ deploy_localhost() {
 	make_privkey_cert
 
 	log "Reloading services"
-	systemctl try-reload-or-restart \
-		nginx.service \
-		turnserver.service
+	systemctl try-reload-or-restart -v $(_deploy_reload "$(hostname)")
 }
-
 
 deploy_ssh() {
 	local LIBSH_LOG_PREFIX="deploy_ssh($1)"
@@ -90,7 +102,7 @@ deploy_ssh() {
 	EOF
 
 	log "copying OK, now reloading"
-	do_ssh 'systemctl try-reload-or-restart nginx'
+	do_ssh "systemctl try-reload-or-restart -v $(_deploy_reload "$host")"
 
 	log "reloading OK"
 }
@@ -137,29 +149,6 @@ deploy_openwrt() {
 	log "copying OK, now reloading"
 
 	do_ssh '/etc/init.d/uhttpd reload'
-
-	log "reloading OK"
-}
-
-deploy_outpost() {
-	local LIBSH_LOG_PREFIX="deploy_outpost($1)"
-	local host="$1"
-	local identity="$2"
-	shift 2
-
-	deploy_prep "$@"
-	ssh_prep
-
-	log "copying cert via sftp"
-
-	do_sftp <<-EOF || die 'failed to upload cert'
-		put "$PRIVKEY" /etc/admin/certs/outpost.intelfx.name.key
-		put "$FULLCHAIN" /etc/admin/certs/outpost.intelfx.name.crt
-	EOF
-
-	log "copying OK, now reloading"
-
-	do_ssh 'systemctl try-reload-or-restart turnserver nginx'
 
 	log "reloading OK"
 }
@@ -220,7 +209,7 @@ hook -EP '(deploy|unchanged)_cert' sentinel.intelfx.name \
 #hook -EP '(deploy|unchanged)_cert' router.nexus.i.intelfx.name \
 #	-- deploy_openwrt root@router.tailbefcf.ts.net /etc/admin/keys/id_ed25519
 hook -EP '(deploy|unchanged)_cert' outpost.intelfx.name \
-	-- deploy_outpost root@outpost.tailbefcf.ts.net /etc/admin/keys/id_ed25519
+	-- deploy_ssh root@outpost.tailbefcf.ts.net /etc/admin/keys/id_ed25519
 hook -EP '(deploy|unchanged)_cert' enclave.exile.i.intelfx.name \
 	-- deploy_ssh root@enclave.tailbefcf.ts.net /etc/admin/keys/id_ed25519
 

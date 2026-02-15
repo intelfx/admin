@@ -212,6 +212,8 @@ hook -EP '(deploy|unchanged)_cert' router.exile.i.intelfx.name \
 	-- deploy_routeros admin@router.exile.i.intelfx.name /etc/admin/keys/id_ed25519
 hook -EP '(deploy|unchanged)_cert' enclave.exile.i.intelfx.name \
 	-- deploy_ssh root@enclave.tailbefcf.ts.net /etc/admin/keys/id_ed25519
+hook -EP '(deploy|unchanged)_cert' rampart.exile.i.intelfx.name \
+	-- deploy_pikvm root@rampart.tailbefcf.ts.net /etc/admin/keys/id_ed25519
 hook -EP '(deploy|unchanged)_cert' sentinel.intelfx.name \
 	-- deploy_pikvm root@sentinel.tailbefcf.ts.net /etc/admin/keys/id_ed25519
 hook -EP '(deploy|unchanged)_cert' outpost.intelfx.name \

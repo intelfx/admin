@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+from __future__ import annotations
+
 import argparse
 import logging
 import yaml
@@ -10,6 +12,9 @@ import subprocess
 import tempfile
 import contextlib
 from dataclasses import dataclass
+from typing import (
+	Self,
+)
 
 import dns.resolver
 
@@ -30,56 +35,99 @@ class HookItem:
 		return f'_acme-challenge.{self.domain}.'
 
 
-#
-# helper functions
-#
+class GcloudDnsTxn:
+	@dataclass(frozen=True)
+	class NXDOMAIN:
+		pass
 
-def gcloud_dns_list(zone):
-	r = lib.run(
-		[ 'gcloud', 'dns', 'record-sets', 'list', '-z', zone, '--format', 'json' ],
-		stdout=subprocess.PIPE
-	)
-	r = lib.attrconvert(json.loads(r.stdout))
-	return r
+	@dataclass(frozen=True)
+	class Target:
+		name: str
+		type: str
+		target: set[str] | GcloudDnsTxn.NXDOMAIN
 
+	def __init__(self, zone):
+		self.zone = zone
+		self.ops: list[GcloudDnsTxn.Target] = []
 
-def gcloud_dns_txn(zone, op, *args):
-	r = lib.run(
-		[ 'gcloud', 'dns', 'record-sets', 'transaction', op, '-z', zone, *args ]
-	)
-	return r
+	def _invoke(self, op, *args):
+		r = lib.run(
+			[ 'gcloud', 'dns', 'record-sets', 'transaction', op, '-z', self.zone, *args ]
+		)
+		return r
 
+	# Technically this does not belong to a transaction, but it's convenient to have here.
+	def _list(self) -> list:
+		r = lib.run(
+			[ 'gcloud', 'dns', 'record-sets', 'list', '-z', self.zone, '--format', 'json' ],
+			stdout=subprocess.PIPE
+		)
+		r = lib.attrconvert(json.loads(r.stdout))
+		# gcloud produces quoted RRDATAs for TXT records, but everything else in this script
+		# works with unquoted values (e.g. dns.resolver path)
+		for record in r:
+			if record.type == 'TXT':
+				record.rrdatas = [s.strip('"') for s in record.rrdatas]
+		return r
 
-def wait(*, name, type, target):
-	delay = 1.875
-	while True:
-		try:
-			answers = {
-				str(b, encoding='ascii')
-				for r in dns.resolver.resolve(name, type)
-				for b in r.strings
-			}
-			if answers == {target}:
-				break
-			logging.debug(f'wrong record type {type} name {name} target {target} actual {answers}')
-		except dns.resolver.NXDOMAIN as e:
-			logging.debug(f'NXDOMAIN looking for record type {type} name {name}')
-			pass
+	def __enter__(self) -> Self:
+		self._invoke('start')
+		return self
 
-		logging.info(f'will wait for {delay} seconds for record type {type} name {name} target {target} to appear')
-		time.sleep(delay)
-		delay = min(60, delay*2)
+	def __exit__(self, exc_type, exc_value, traceback):
+		if exc_type is not None:
+			self._invoke('abort')
+		else:
+			self._invoke('execute')
+		return False
 
-	logging.info(f'will wait another {delay} seconds')
-	time.sleep(delay)
+	def add(self, name, type, ttl, rrdatas):
+		self.ops.append(GcloudDnsTxn.Target(name, type, set(rrdatas)))
+		self._invoke('add', '--name', name, '--type', type, '--ttl', str(ttl), '--', *rrdatas)
 
+	def remove(self, name, type, ttl, rrdatas):
+		self.ops.append(GcloudDnsTxn.Target(name, type, GcloudDnsTxn.NXDOMAIN()))
+		self._invoke('remove', '--name', name, '--type', type, '--ttl', str(ttl), '--', *rrdatas)
 
-def find(zone, name, type, target=None):
-	for r in gcloud_dns_list(zone):
-		if (r.type == type and
-		    r.name == name and
-		    (target is None or target in r.rrdatas)):
-			yield r
+	def wait(self):
+		# a single transaction may delete and re-add RRs for a given key; compute expected state
+		expected = {}
+		for op in self.ops:
+			expected[(op.name, op.type)] = op
+
+		for op in expected.values():
+			delay = 1.875
+			while True:
+				try:
+					answers = {
+						str(b, encoding='ascii')
+						for r in dns.resolver.resolve(op.name, op.type)
+						for b in r.strings
+					}
+				except dns.resolver.NXDOMAIN:
+					answers = GcloudDnsTxn.NXDOMAIN()
+				if answers == op.target:
+					logging.debug(f'found record type {op.type} name {op.name} target {op.target}')
+					break
+				elif answers != GcloudDnsTxn.NXDOMAIN():
+					logging.debug(f'wrong record type {op.type} name {op.name} target {op.target} actual {answers}')
+				else:
+					logging.debug(f'NXDOMAIN looking for record type {op.type} name {op.name}')
+
+				logging.info(f'will wait for {delay} seconds for record type {op.type} name {op.name} target {op.target} to appear')
+				time.sleep(delay)
+				delay *= 2
+
+			logging.info(f'will wait another {delay} seconds')
+			time.sleep(delay)
+
+	def find(self, name, type, target=None):
+		for r in self._list():
+			if (r.type == type and
+			    r.name == name and
+			    (target is None or target in r.rrdatas)):
+				yield r
+
 
 
 #
@@ -87,41 +135,30 @@ def find(zone, name, type, target=None):
 #
 
 def deploy(*, zone, name, type, target):
-	try:
-		gcloud_dns_txn(zone, 'start')
+	with GcloudDnsTxn(zone) as txn:
+		for r in txn.find(name=name, type=type, target=None):
+			logging.info(f'will delete record type {r.type} name {r.name} ttl {r.ttl} RRDATAs {r.rrdatas}')
+			txn.remove(r.name, r.type, r.ttl, r.rrdatas)
 
-		for r in find(zone=zone, name=name, type=type):
-			logging.info(f'will delete record id type {r.type} name {r.name} ttl {r.ttl} RRDATAs {r.rrdatas}')
-			gcloud_dns_txn(zone, 'remove', '--name', r.name, '--type', r.type, '--ttl', f'{r.ttl}', '--', *r.rrdatas)
+		ttl = 60
+		rrdatas = [target]
+		logging.info(f'will create record type {type} name {name} ttl {ttl} RRDATAs {rrdatas}')
+		txn.add(name, type, ttl, rrdatas)
 
-		logging.info(f'will create record type {type} name {name} target {target}')
-		gcloud_dns_txn(zone, 'add', '--name', name, '--type', type, '--ttl', '60', '--', target)
-
-		gcloud_dns_txn(zone, 'execute')
-		wait(name=name, type=type, target=target)
-	except:
-		gcloud_dns_txn(zone, 'abort')
-
-		raise
+	txn.wait()
 
 
 def clean(*, zone, name, type, target):
-	try:
-		gcloud_dns_txn(zone, 'start')
-
-		# Read existing records
+	with GcloudDnsTxn(zone) as txn:
 		found = False
-		for r in find(zone=zone, name=name, type=type, target=f'"{target}"'):
-			logging.info(f'will delete record id type {r.type} name {r.name} ttl {r.ttl} RRDATAs {r.rrdatas}')
-			gcloud_dns_txn(zone, 'remove', '--name', r.name, '--type', r.type, '--ttl', f'{r.ttl}', '--', *r.rrdatas)
+		for r in txn.find(name=name, type=type, target=target):
+			logging.info(f'will delete record type {r.type} name {r.name} ttl {r.ttl} RRDATAs {r.rrdatas}')
+			txn.remove(r.name, r.type, r.ttl, r.rrdatas)
 			found = True
 		if not found:
 			logging.warning(f'could not find record type {type} name {name} target {target}')
 
-		gcloud_dns_txn(zone, 'execute')
-	except:
-		gcloud_dns_txn(zone, 'abort')
-		raise
+	txn.wait()
 
 
 #

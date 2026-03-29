@@ -150,7 +150,7 @@ class GcloudDnsTxn:
 # action functions
 #
 
-def deploy(*, txn, name, type, target):
+def deploy(*, txn: GcloudDnsTxn, name: str, type: str, target: str):
 	for r in txn.find(name=name, type=type, target=None):
 		logging.info(f'will delete record type {r.type} name {r.name} ttl {r.ttl} RRDATAs {r.rrdatas}')
 		txn.remove(r.name, r.type, r.ttl, r.rrdatas)
@@ -161,7 +161,7 @@ def deploy(*, txn, name, type, target):
 	txn.add(name, type, ttl, rrdatas)
 
 
-def clean(*, txn, name, type, target):
+def clean(*, txn: GcloudDnsTxn, name: str, type: str, target: str):
 	found = False
 	for r in txn.find(name=name, type=type, target=target):
 		logging.info(f'will delete record type {r.type} name {r.name} ttl {r.ttl} RRDATAs {r.rrdatas}')

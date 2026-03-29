@@ -95,6 +95,8 @@ class GcloudDnsTxn:
 		for op in self.ops:
 			expected[(op.name, op.type)] = op
 
+		max_delay_so_far = 0
+
 		for op in expected.values():
 			delay = 1.875
 			while True:
@@ -121,6 +123,7 @@ class GcloudDnsTxn:
 
 				if answers == op.target:
 					logging.debug(f'found record type {op.type} name {op.name} target {op.target}')
+					max_delay_so_far = max(max_delay_so_far, delay)
 					break
 				elif answers != GcloudDnsTxn.NXDOMAIN():
 					logging.debug(f'wrong record type {op.type} name {op.name} target {op.target} actual {answers}')
@@ -131,8 +134,8 @@ class GcloudDnsTxn:
 				time.sleep(delay)
 				delay *= 2
 
-			logging.info(f'will wait another {delay} seconds')
-			time.sleep(delay)
+		logging.info(f'found all {len(expected)} records, will wait for {max_delay_so_far} seconds more')
+		time.sleep(max_delay_so_far)
 
 	def find(self, name, type, target=None):
 		for r in self._list():

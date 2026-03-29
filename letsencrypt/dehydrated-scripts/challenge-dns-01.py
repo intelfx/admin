@@ -147,31 +147,25 @@ class GcloudDnsTxn:
 # action functions
 #
 
-def deploy(*, zone, name, type, target):
-	with GcloudDnsTxn(zone) as txn:
-		for r in txn.find(name=name, type=type, target=None):
-			logging.info(f'will delete record type {r.type} name {r.name} ttl {r.ttl} RRDATAs {r.rrdatas}')
-			txn.remove(r.name, r.type, r.ttl, r.rrdatas)
+def deploy(*, txn, name, type, target):
+	for r in txn.find(name=name, type=type, target=None):
+		logging.info(f'will delete record type {r.type} name {r.name} ttl {r.ttl} RRDATAs {r.rrdatas}')
+		txn.remove(r.name, r.type, r.ttl, r.rrdatas)
 
-		ttl = 60
-		rrdatas = [target]
-		logging.info(f'will create record type {type} name {name} ttl {ttl} RRDATAs {rrdatas}')
-		txn.add(name, type, ttl, rrdatas)
-
-	txn.wait()
+	ttl = 60
+	rrdatas = [target]
+	logging.info(f'will create record type {type} name {name} ttl {ttl} RRDATAs {rrdatas}')
+	txn.add(name, type, ttl, rrdatas)
 
 
-def clean(*, zone, name, type, target):
-	with GcloudDnsTxn(zone) as txn:
-		found = False
-		for r in txn.find(name=name, type=type, target=target):
-			logging.info(f'will delete record type {r.type} name {r.name} ttl {r.ttl} RRDATAs {r.rrdatas}')
-			txn.remove(r.name, r.type, r.ttl, r.rrdatas)
-			found = True
-		if not found:
-			logging.warning(f'could not find record type {type} name {name} target {target}')
-
-	txn.wait()
+def clean(*, txn, name, type, target):
+	found = False
+	for r in txn.find(name=name, type=type, target=target):
+		logging.info(f'will delete record type {r.type} name {r.name} ttl {r.ttl} RRDATAs {r.rrdatas}')
+		txn.remove(r.name, r.type, r.ttl, r.rrdatas)
+		found = True
+	if not found:
+		logging.warning(f'could not find record type {type} name {name} target {target}')
 
 
 #
@@ -239,11 +233,14 @@ config = config.gcloud
 
 with tempfile.TemporaryDirectory(prefix="letsencrypt-dns-01") as tempdir:
 	with contextlib.chdir(tempdir):
-		for item in items:
-			lib.configure_logging(prefix=f'DNS-01: {item.domain}', force=True)
-			actions[args.action](
-				zone=config.zone,
-				name=item.challenge_domain(),
-				target=item.dns_token,
-				type='TXT',
-			)
+		with GcloudDnsTxn(config.zone) as txn:
+			for item in items:
+				lib.configure_logging(prefix=f'DNS-01: {item.domain}', force=True)
+				actions[args.action](
+					txn=txn,
+					name=item.challenge_domain(),
+					target=item.dns_token,
+					type='TXT',
+				)
+			lib.configure_logging(prefix='DNS-01', force=True)
+		txn.wait()

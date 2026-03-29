@@ -238,12 +238,12 @@ with tempfile.TemporaryDirectory(prefix="letsencrypt-dns-01") as tempdir:
 	with contextlib.chdir(tempdir):
 		with GcloudDnsTxn(config.zone) as txn:
 			for item in items:
-				lib.configure_logging(prefix=f'DNS-01: {item.domain}', force=True)
+				lib.configure_logging(prefix=f'DNS-01[{item.domain}]', force=True)
 				actions[args.action](
 					txn=txn,
 					name=item.challenge_domain(),
 					target=item.dns_token,
 					type='TXT',
 				)
-			lib.configure_logging(prefix='DNS-01', force=True)
+			lib.configure_logging(prefix='DNS-01[commit]', force=True)
 		txn.wait()

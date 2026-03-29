@@ -155,11 +155,8 @@ except AttributeError:
 
 
 #
-# DNS: linode.com
+# DNS: Google Cloud DNS
 #
-
-def subdomain_of(subdomain, domain):
-	return subdomain == domain or subdomain.endswith('.' + domain)
 
 config = config.gcloud
 

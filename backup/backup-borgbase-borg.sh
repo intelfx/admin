@@ -9,13 +9,24 @@ SCRIPT_PATH="$(realpath -s "$BASH_SOURCE")"
 cd "$SCRIPT_DIR"
 . lib/lib.sh
 
+
+#
+# overrides
+#
+
+export ALL_PROXY="socks5h://127.0.0.1:1080"
+SSH_PROXY=(
+	"-oProxyCommand=nc -X 5 -x 127.0.0.1:1080 %h %p"
+)
+
+
 #
 # constants and setup
 #
 
 LOCAL_PATH=/mnt/data
 export BORG_BASE_DIR="/mnt/local/Scratch/borg"
-export BORG_RSH="ssh -oBatchMode=yes -oIdentitiesOnly=yes -i/etc/admin/keys/id_borgbase_append_ed25519"
+export BORG_RSH="ssh -oBatchMode=yes -oIdentitiesOnly=yes -i/etc/admin/keys/id_borgbase_append_ed25519 ${SSH_PROXY[*]@Q}"
 export BORG_PASSCOMMAND="cat /etc/admin/keys/borg"
 
 BORGBASE_NAME="$(hostname --short)/tank/borg"

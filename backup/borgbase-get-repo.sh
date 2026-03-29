@@ -9,6 +9,17 @@ SCRIPT_PATH="$(realpath -s "$BASH_SOURCE")"
 cd "$SCRIPT_DIR"
 . lib/lib.sh
 
+
+#
+# overrides
+#
+
+export ALL_PROXY="socks5h://127.0.0.1:1080"
+SSH_PROXY=(
+	"-oProxyCommand=nc -X 5 -x 127.0.0.1:1080 %h %p"
+)
+
+
 #
 # constants
 #

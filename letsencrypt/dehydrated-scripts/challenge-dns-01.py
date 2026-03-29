@@ -106,6 +106,19 @@ class GcloudDnsTxn:
 					}
 				except dns.resolver.NXDOMAIN:
 					answers = GcloudDnsTxn.NXDOMAIN()
+				except dns.resolver.NoAnswer:
+					# NoAnswer happens when there is a wildcard entry of a different TYPE
+					# (e.g. CNAME) for the same domain as the `_acme-challenge` record
+					# that was just deleted, e.g.:
+					#
+					# foo.example.                  86400  IN  A      ...
+					# foo.example.                  86400  IN  AAAA   ...
+					# *.foo.example.                86400  IN  CNAME  foo.example.
+					# _acme-challenge.foo.example.  86400  IN  TXT   (this was just deleted)
+					#
+					# In this case we will get a NoAnswer, but we should still treat it as NXDOMAIN.
+					answers = GcloudDnsTxn.NXDOMAIN()
+
 				if answers == op.target:
 					logging.debug(f'found record type {op.type} name {op.name} target {op.target}')
 					break

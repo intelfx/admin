@@ -9,11 +9,30 @@ import time
 import subprocess
 import tempfile
 import contextlib
+from dataclasses import dataclass
 
 import dns.resolver
 
 import lib
 
+
+#
+# definitions
+#
+
+@dataclass
+class HookItem:
+	domain: str
+	challenge_token: str  # passed by dehydrated; unused
+	dns_token: str
+
+	def challenge_domain(self):
+		return f'_acme-challenge.{self.domain}.'
+
+
+#
+# helper functions
+#
 
 def gcloud_dns_list(zone):
 	r = lib.run(
@@ -62,6 +81,10 @@ def find(zone, name, type, target=None):
 		    (target is None or target in r.rrdatas)):
 			yield r
 
+
+#
+# action functions
+#
 
 def deploy(*, zone, name, type, target):
 	try:
@@ -119,13 +142,17 @@ lib.configure_logging(prefix='DNS-01')
 
 parser = argparse.ArgumentParser()
 parser.add_argument('action', choices=actions.keys())
-parser.add_argument('domain')
-parser.add_argument('challenge_token')
-parser.add_argument('dns_token')
+parser.add_argument('items', nargs='+', metavar='DOMAIN CHALLENGE-TOKEN DNS-TOKEN')
 parser.add_argument('--config')  # default='/etc/admin/dns/dns.yaml'
 args = parser.parse_args()
 
-lib.configure_logging(prefix=f'DNS-01: {args.domain}', force=True)
+items_raw = args.items
+if len(items_raw) % 3 != 0:
+	raise ValueError(f'expected groups of 3 positional arguments (DOMAIN CHALLENGE-TOKEN DNS-TOKEN), got {len(items_raw)}')
+items = [
+	HookItem(*items_raw[i:i+3])
+	for i in range(0, len(items_raw), 3)
+]
 
 
 #
@@ -162,9 +189,11 @@ config = config.gcloud
 
 with tempfile.TemporaryDirectory(prefix="letsencrypt-dns-01") as tempdir:
 	with contextlib.chdir(tempdir):
-		actions[args.action](
-			zone = config.zone,
-			name=f'_acme-challenge.{args.domain}.',
-			target=args.dns_token,
-			type='TXT'
-		)
+		for item in items:
+			lib.configure_logging(prefix=f'DNS-01: {item.domain}', force=True)
+			actions[args.action](
+				zone=config.zone,
+				name=item.challenge_domain(),
+				target=item.dns_token,
+				type='TXT',
+			)

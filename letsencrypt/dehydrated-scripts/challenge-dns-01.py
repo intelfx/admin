@@ -115,7 +115,7 @@ actions = {
 # main: parse arguments
 #
 
-lib.configure_logging(prefix='DNS-01: ')
+lib.configure_logging(prefix='DNS-01')
 
 parser = argparse.ArgumentParser()
 parser.add_argument('action', choices=actions.keys())
@@ -125,7 +125,7 @@ parser.add_argument('dns_token')
 parser.add_argument('--config', type=argparse.FileType('r'))  # default='/etc/admin/dns/dns.yaml'
 args = parser.parse_args()
 
-lib.configure_logging(prefix=f'DNS-01: {args.domain}: ')
+lib.configure_logging(prefix=f'DNS-01: {args.domain}', force=True)
 
 
 #

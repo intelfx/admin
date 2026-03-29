@@ -93,7 +93,7 @@ def clean(*, zone, name, type, target):
 			gcloud_dns_txn(zone, 'remove', '--name', r.name, '--type', r.type, '--ttl', f'{r.ttl}', '--', *r.rrdatas)
 			found = True
 		if not found:
-			logging.warn(f'could not find record type {type} name {name} target {target}')
+			logging.warning(f'could not find record type {type} name {name} target {target}')
 
 		gcloud_dns_txn(zone, 'execute')
 	except:

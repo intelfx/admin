@@ -2,10 +2,11 @@
 
 set -eo pipefail
 shopt -s lastpipe
+shopt -s extglob
 
-INVOCATION_DIR="$PWD"
-
-cd "${BASH_SOURCE%/*}"
+SCRIPT_DIR="$(realpath -s "${BASH_SOURCE%/*}")"
+SCRIPT_PATH="$(realpath -s "$BASH_SOURCE")"
+cd "$SCRIPT_DIR"
 . lib/lib.sh
 
 format_time() {

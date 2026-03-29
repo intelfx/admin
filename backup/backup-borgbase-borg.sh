@@ -5,6 +5,7 @@ shopt -s lastpipe
 shopt -s extglob
 
 SCRIPT_DIR="$(realpath -s "${BASH_SOURCE%/*}")"
+SCRIPT_PATH="$(realpath -s "$BASH_SOURCE")"
 cd "$SCRIPT_DIR"
 . lib/lib.sh
 

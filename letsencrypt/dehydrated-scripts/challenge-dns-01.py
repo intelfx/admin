@@ -37,18 +37,26 @@ class HookItem:
 
 class GcloudDnsTxn:
 	@dataclass(frozen=True)
-	class NXDOMAIN:
-		pass
-
-	@dataclass(frozen=True)
-	class Target:
+	class RecordKey:
 		name: str
 		type: str
-		target: set[str] | GcloudDnsTxn.NXDOMAIN
+		def __str__(self):
+			return f'{self.name!r} {self.type}'
+
+	@dataclass
+	class Record:
+		key: GcloudDnsTxn.RecordKey
+		ttl: int
+		rrdatas: set[str]
+		def __str__(self):
+			return f'{self.key.name!r} {self.ttl} {self.key.type} {sorted(self.rrdatas)}'
 
 	def __init__(self, zone):
 		self.zone = zone
-		self.ops: list[GcloudDnsTxn.Target] = []
+		# Original DNS state (queried at the start of the transaction)
+		self._original: dict[GcloudDnsTxn.RecordKey, GcloudDnsTxn.Record] = {}
+		# Desired DNS state for modified records (None = should be deleted)
+		self._desired: dict[GcloudDnsTxn.RecordKey, GcloudDnsTxn.Record | None] = {}
 
 	def _invoke(self, op, *args):
 		r = lib.run(
@@ -56,7 +64,6 @@ class GcloudDnsTxn:
 		)
 		return r
 
-	# Technically this does not belong to a transaction, but it's convenient to have here.
 	def _list(self) -> list:
 		r = lib.run(
 			[ 'gcloud', 'dns', 'record-sets', 'list', '-z', self.zone, '--format', 'json' ],
@@ -71,6 +78,11 @@ class GcloudDnsTxn:
 		return r
 
 	def __enter__(self) -> Self:
+		# Load current DNS state before starting the transaction
+		for r in self._list():
+			key = GcloudDnsTxn.RecordKey(r.name, r.type)
+			self._original[key] = GcloudDnsTxn.Record(key, r.ttl, set(r.rrdatas))
+		# Start the gcloud transaction
 		self._invoke('start')
 		return self
 
@@ -78,37 +90,81 @@ class GcloudDnsTxn:
 		if exc_type is not None:
 			self._invoke('abort')
 		else:
+			self._flush()
 			self._invoke('execute')
 		return False
 
-	def add(self, name, type, ttl, rrdatas):
-		self.ops.append(GcloudDnsTxn.Target(name, type, set(rrdatas)))
-		self._invoke('add', '--name', name, '--type', type, '--ttl', str(ttl), '--', *rrdatas)
+	def _record_args(self, rec: GcloudDnsTxn.Record):
+		return ['--name', rec.key.name, '--type', rec.key.type, '--ttl', str(rec.ttl), '--', *sorted(rec.rrdatas)]
 
-	def remove(self, name, type, ttl, rrdatas):
-		self.ops.append(GcloudDnsTxn.Target(name, type, GcloudDnsTxn.NXDOMAIN()))
-		self._invoke('remove', '--name', name, '--type', type, '--ttl', str(ttl), '--', *rrdatas)
+	def _flush(self):
+		"""Compute diff between original and desired state, issue gcloud transaction commands."""
+		for key, desired in self._desired.items():
+			original = self._original.get(key)
+			if desired and desired == original:
+				continue
+			if original:
+				logging.info(f'removing record {original}')
+				self._invoke('remove', *self._record_args(original))
+			if desired:
+				logging.info(f'creating record {desired}')
+				self._invoke('add', *self._record_args(desired))
+
+	def add(self, name, type, ttl, rdata):
+		"""Add an RDATA for deployment.  First touch discards any pre-existing
+		record (stale from a previous run); subsequent calls accumulate additively."""
+		key = GcloudDnsTxn.RecordKey(name, type)
+		rec = self._desired.get(key)
+		if rec is not None:
+			# already modified in this transaction, append RDATA to the existing set
+			rec.rrdatas.add(rdata)
+		else:
+			# either absent (not modified in this transaction yet) or None (previously deleted in this transaction),
+			# treat both the same (discard existing records if any)
+			rec = self._desired[key] = GcloudDnsTxn.Record(key, ttl, {rdata})
+		logging.info(f'deploying {key} {rdata!r} -> {sorted(rec.rrdatas)}')
+
+	def remove(self, name, type, rdata):
+		"""Remove a specific RDATA.  Returns True if found, False otherwise."""
+		key = GcloudDnsTxn.RecordKey(name, type)
+		# Materialize original into _desired on first touch so we can edit in place
+		if key not in self._desired:
+			orig = self._original.get(key)
+			if not orig or rdata not in orig.rrdatas:
+				return False
+			self._desired[key] = GcloudDnsTxn.Record(key, orig.ttl, set(orig.rrdatas))
+		rec = self._desired[key]
+		if not rec or rdata not in rec.rrdatas:
+			return False
+		rec.rrdatas.discard(rdata)
+		logging.info(f'cleaning {key} {rdata!r} -> {sorted(rec.rrdatas)}')
+		if not rec.rrdatas:
+			self._desired[key] = None
+		return True
 
 	def wait(self):
-		# a single transaction may delete and re-add RRs for a given key; compute expected state
-		expected = {}
-		for op in self.ops:
-			expected[(op.name, op.type)] = op
+		"""Wait for all modified records to propagate in DNS."""
+		def _rrdatas(r): return r.rrdatas if r else None
+		def _fmt(s): return sorted(s) if s else '(none)'
+
+		expected = {
+			key: _rrdatas(desired)
+			for key, desired in self._desired.items()
+			if _rrdatas(desired) != _rrdatas(self._original.get(key))
+		}
 
 		max_delay_so_far = 0
 
-		for op in expected.values():
+		for key, desired in expected.items():
 			delay = 1.875
 			while True:
 				try:
 					answers = {
 						str(b, encoding='ascii')
-						for r in dns.resolver.resolve(op.name, op.type)
+						for r in dns.resolver.resolve(key.name, key.type)
 						for b in r.strings
 					}
-				except dns.resolver.NXDOMAIN:
-					answers = GcloudDnsTxn.NXDOMAIN()
-				except dns.resolver.NoAnswer:
+				except (dns.resolver.NXDOMAIN, dns.resolver.NoAnswer):
 					# NoAnswer happens when there is a wildcard entry of a different TYPE
 					# (e.g. CNAME) for the same domain as the `_acme-challenge` record
 					# that was just deleted, e.g.:
@@ -119,30 +175,19 @@ class GcloudDnsTxn:
 					# _acme-challenge.foo.example.  86400  IN  TXT   (this was just deleted)
 					#
 					# In this case we will get a NoAnswer, but we should still treat it as NXDOMAIN.
-					answers = GcloudDnsTxn.NXDOMAIN()
+					answers = None
 
-				if answers == op.target:
-					logging.debug(f'found record type {op.type} name {op.name} target {op.target}')
+				if answers == desired:
+					logging.debug(f'found record {key} {_fmt(desired)}')
 					max_delay_so_far = max(max_delay_so_far, delay)
 					break
-				elif answers != GcloudDnsTxn.NXDOMAIN():
-					logging.debug(f'wrong record type {op.type} name {op.name} target {op.target} actual {answers}')
-				else:
-					logging.debug(f'NXDOMAIN looking for record type {op.type} name {op.name}')
 
-				logging.info(f'will wait for {delay} seconds for record type {op.type} name {op.name} target {op.target} to appear')
+				logging.info(f'waiting {delay}s for record {key} expected {_fmt(desired)}, got {_fmt(answers)}')
 				time.sleep(delay)
 				delay *= 2
 
 		logging.info(f'found all {len(expected)} records, will wait for {max_delay_so_far} seconds more')
 		time.sleep(max_delay_so_far)
-
-	def find(self, name, type, target=None):
-		for r in self._list():
-			if (r.type == type and
-			    r.name == name and
-			    (target is None or target in r.rrdatas)):
-				yield r
 
 
 
@@ -151,24 +196,13 @@ class GcloudDnsTxn:
 #
 
 def deploy(*, txn: GcloudDnsTxn, name: str, type: str, target: str):
-	for r in txn.find(name=name, type=type, target=None):
-		logging.info(f'will delete record type {r.type} name {r.name} ttl {r.ttl} RRDATAs {r.rrdatas}')
-		txn.remove(r.name, r.type, r.ttl, r.rrdatas)
-
-	ttl = 60
-	rrdatas = [target]
-	logging.info(f'will create record type {type} name {name} ttl {ttl} RRDATAs {rrdatas}')
-	txn.add(name, type, ttl, rrdatas)
+	txn.add(name, type, ttl=60, rdata=target)
 
 
 def clean(*, txn: GcloudDnsTxn, name: str, type: str, target: str):
-	found = False
-	for r in txn.find(name=name, type=type, target=target):
-		logging.info(f'will delete record type {r.type} name {r.name} ttl {r.ttl} RRDATAs {r.rrdatas}')
-		txn.remove(r.name, r.type, r.ttl, r.rrdatas)
-		found = True
+	found = txn.remove(name, type, rdata=target)
 	if not found:
-		logging.warning(f'could not find record type {type} name {name} target {target}')
+		logging.warning(f'not found {name!r} {type} {target!r}')
 
 
 #

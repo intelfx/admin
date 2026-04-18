@@ -22,6 +22,7 @@ LABEL="notmisc"
 SUBSYSTEM=="drm", ENV{CONTAINER}="stratofortress"
 SUBSYSTEM=="tpm", ENV{CONTAINER}="stratofortress"
 SUBSYSTEM=="tpmrm", ENV{CONTAINER}="stratofortress"
+SUBSYSTEM=="usb", ENV{ID_SMARTCARD_READER}=="1", ENV{CONTAINER}="stratofortress"
 # ...add your rules here...
 
 ENV{CONTAINER}!="?*", GOTO="end"

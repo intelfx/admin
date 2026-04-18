@@ -20,6 +20,8 @@ KERNEL=="btrfs-control", ENV{CONTAINER}="stratofortress"
 LABEL="notmisc"
 
 SUBSYSTEM=="drm", ENV{CONTAINER}="stratofortress"
+SUBSYSTEM=="tpm", ENV{CONTAINER}="stratofortress"
+SUBSYSTEM=="tpmrm", ENV{CONTAINER}="stratofortress"
 # ...add your rules here...
 
 ENV{CONTAINER}!="?*", GOTO="end"

@@ -97,7 +97,7 @@ action_add() {
 
         # create the main node (use `stat --format` for a cute hack)
         cmd+="
-$(stat --format="mknod %N $devtype 0x%t 0x%T || test -$devtype %N; chown %u:%g %N; chmod 0%a %N" "$DEVNODE")
+$(stat --format="mkdir -p \$(dirname %N); mknod %N $devtype 0x%t 0x%T || test -$devtype %N; chown %u:%g %N; chmod 0%a %N" "$DEVNODE")
 "
 
         # emit a loop to create symlinks with their parent directories

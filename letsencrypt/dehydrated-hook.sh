@@ -189,6 +189,11 @@ deploy_routeros() {
 # main
 #
 
+if [[ $LETSENCRYPT_NAME ]]; then
+	PLAYBOOK_FILE="playbook-$LETSENCRYPT_NAME"
+fi
+PLAYBOOK_FILE="$(realpath -q "$PLAYBOOK_FILE")"
+
 if [[ $1 == playbook ]]; then
 	run_playbook
 	exit

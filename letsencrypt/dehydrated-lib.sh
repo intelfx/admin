@@ -4,6 +4,7 @@ ARGS=( "$@" )
 ACTIONS=()
 PLAYBOOK=()
 FAILS=()
+: "${PLAYBOOK_FILE="playbook"}"
 
 hook() {
 	local opt opt_priv=0 opt_regex=0 OPTIND=1
@@ -46,11 +47,11 @@ hook() {
 }
 
 run_playbook() {
-	log "running playbook"
+	log "running playbook from ${PLAYBOOK_FILE@Q}"
 
-	if [[ -e playbook ]]; then
-		readarray -t ACTIONS < playbook
-		rm -f playbook
+	if [[ -e "$PLAYBOOK_FILE" ]]; then
+		readarray -t ACTIONS <"$PLAYBOOK_FILE"
+		rm -f "$PLAYBOOK_FILE"
 	fi
 
 	# perform privileged actions from the playbook
@@ -87,10 +88,14 @@ run_actions() {
 	done
 	set -e
 
+	if [[ ${PLAYBOOK+set} ]]; then
+		log "saving playbook to ${PLAYBOOK_FILE@Q}"
+	fi
+
 	# record privileged actions into playbook
 	for cmd in "${PLAYBOOK[@]}"; do
 		log "action (into playbook): $cmd"
-		echo "$cmd" >> playbook
+		echo "$cmd" >>"$PLAYBOOK_FILE"
 	done
 
 	if ! (( ${#ACTIONS[@]} || ${#PLAYBOOK[@]} )); then

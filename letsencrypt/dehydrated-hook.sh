@@ -224,4 +224,9 @@ hook -EP '(deploy|unchanged)_cert' sentinel.intelfx.name \
 hook -EP '(deploy|unchanged)_cert' outpost.intelfx.name \
 	-- deploy_ssh root@outpost.tailbefcf.ts.net /etc/admin/keys/id_ed25519
 
+hook -E '(deploy|clean)_challenge' '.*randomtanstudio\.works' \
+	-- "$hookdir"/dehydrated-scripts/challenge-http-01.sh --rootdir /srv/http/acme-challenge --
+hook -EP '(deploy|unchanged)_cert' '.*randomtanstudio\.works' \
+	-- deploy_localhost
+
 run_actions

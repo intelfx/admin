@@ -30,6 +30,7 @@ if TYPE_CHECKING:
 	from _typeshed import (
 		SupportsRead,
 		SupportsWrite,
+		SupportsRichComparison,
 	)
 
 import urllib.error
@@ -341,14 +342,21 @@ async def resolve_endpoints_a(endpoints: set[Endpoint]) -> set[Element]:
 
 # --- output generation --------------------------------------------------------
 
-def lines_emit[T](
+def lines_emit[T: SupportsRichComparison](
 	fp: SupportsWrite[str],
 	items: Iterable[T],
 	counted: Optional[bool] = None,
+	sorted_: Optional[bool] = None,
 ):
 	global LINES_EMIT_COUNTED
 	if counted is None:
 		counted = LINES_EMIT_COUNTED
+	global LINES_EMIT_SORTED
+	if sorted_ is None:
+		sorted_ = LINES_EMIT_SORTED
+
+	if sorted_:
+		items = sorted(items)
 
 	if counted:
 		items_counted = defaultdict(int)
@@ -410,6 +418,7 @@ def main(
 	list_ips: bool = typer.Option(False, help="Dump all tracker IPs"),
 	list_elements: bool = typer.Option(False, help="Dump all endpoint tuples"),
 	list_count: bool = typer.Option(False, help="Dump lists with counts"),
+	list_sort: bool = typer.Option(False, help="Dump lists sorted"),
 	dump_endpoints: bool = typer.Option(False, help="Dump all endpoints as JSON"),
 	dump_elements: bool = typer.Option(False, help="Dump all endpoint tuples as JSON"),
 	dump_all: bool = typer.Option(False, help="Dump everything (announce URLs, endpoints, tuples) as JSON"),
@@ -430,6 +439,9 @@ def main(
 
 	global LINES_EMIT_COUNTED
 	LINES_EMIT_COUNTED = list_count
+
+	global LINES_EMIT_SORTED
+	LINES_EMIT_SORTED = list_sort
 
 	rpc = Transmission(url, f"{auth_user}:{auth_pass}" if auth_user else None)
 

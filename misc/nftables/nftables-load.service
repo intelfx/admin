@@ -14,3 +14,4 @@ ExecStart=/usr/bin/nft -f /etc/nftables.conf
 [Install]
 WantedBy=multi-user.target
 Also=nftables-load-good.service
+Also=nftables-reload.path

@@ -96,11 +96,12 @@ class Element:
 	port: int
 	addr: IPAddress
 
-	def _render_nft(self, timeout: str) -> str:
+	def _render_nft(self, timeout: Optional[str]) -> str:
 		"""Render this endpoint as an nftables set element (proto . port . addr)."""
-		return f"{self.proto} . {self.port} . {self.addr} timeout {timeout}"
+		_timeout = f" timeout {timeout}" if timeout is not None else ""
+		return f"{self.proto} . {self.port} . {self.addr}{_timeout}"
 
-	def render_nft(self, timeout: str) -> str:
+	def render_nft(self, timeout: Optional[str]) -> str:
 		"""
 		Produce nftables statements to insert or update this endpoint as nftables
 		set element (proto . port . addr) into a set with timeouts.
@@ -367,7 +368,7 @@ def nft_emit(
 	elements: set[Element],
 	nft_table: str,
 	nft_sets: dict[Literal[4, 6], str],
-	nft_timeout: str,
+	nft_timeout: Optional[str],
 ) -> str:
 	"""Render nftables statements populating 3-tuple sets from decoded endpoints."""
 	lines = []
@@ -397,7 +398,7 @@ def main(
 	auth_user: Optional[str] = typer.Option(None, envvar="TR_USER", help="Basic auth username"),
 	auth_pass: Optional[str] = typer.Option(None, envvar="TR_PASS", help="Basic auth password"),
 	nft: bool = typer.Option(False, help="generate nft set elements"),
-	nft_timeout: str = typer.Option("1h", help="per-element nft timeout"),
+	nft_timeout: Optional[str] = typer.Option(None, help="per-element nft timeout (use per-set default if not specified)"),
 	nft_table: str = typer.Option("inet nft", help="target nft table"),
 	nft_set_v4: str = typer.Option("transmission_ip4", help="target nft set for IPv4 endpoints"),
 	nft_set_v6: str = typer.Option("transmission_ip6", help="target nft set for IPv6 endpoints"),

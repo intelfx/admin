@@ -375,6 +375,7 @@ def nft_emit(
 	nft_table: str,
 	nft_sets: dict[Literal[4, 6], str],
 	nft_timeout: Optional[str],
+	verb: str = "add",
 ) -> str:
 	"""Render nftables statements populating 3-tuple sets from decoded endpoints."""
 	lines = []
@@ -388,8 +389,8 @@ def nft_emit(
 	for family, elts in grouped.items():
 		nft_set = nft_sets[family]
 		body = "".join("\t" + e.render_nft(nft_timeout) + ",\n" for e in elts)
-		lines.append(f"add element {nft_table} {nft_set} {{\n{body}}}")
-		log.info("nft.emit", family=family, set=nft_set, count=len(elts))
+		lines.append(f"{verb} element {nft_table} {nft_set} {{\n{body}}}")
+		log.info("nft.emit", verb=verb, family=family, set=nft_set, count=len(elts))
 	return "\n".join(lines) + "\n" if lines else ""
 
 

@@ -1,0 +1,10 @@
+[Unit]
+Description=Populate nftables ipsets from Transmission periodically
+
+After=nftables.service
+After=transmission@ssd.service
+After=transmission@hdd.service
+
+[Timer]
+OnActiveSec=30s
+OnUnitActiveSec=15min

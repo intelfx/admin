@@ -408,6 +408,7 @@ def main(
 	list_ports: bool = typer.Option(False, help="Dump all tracker ports"),
 	list_services: bool = typer.Option(False, help="Dump all tracker (proto, port) tuples"),  # "services" in the /etc/services sense
 	list_ips: bool = typer.Option(False, help="Dump all tracker IPs"),
+	list_elements: bool = typer.Option(False, help="Dump all endpoint tuples"),
 	list_count: bool = typer.Option(False, help="Dump lists with counts"),
 	dump_endpoints: bool = typer.Option(False, help="Dump all endpoints as JSON"),
 	dump_elements: bool = typer.Option(False, help="Dump all endpoint tuples as JSON"),
@@ -508,6 +509,12 @@ def main(
 			cls=JSONEncoder,
 			indent=4,
 		)
+		sys.exit(0)
+
+	if list_elements:
+		tuples = [ ep._render_nft(timeout=None) for ep in elements ]
+		# endpoints are a set, elements will be unique ⇒ nothing to count
+		lines_emit(sys.stdout, tuples, counted=False)
 		sys.exit(0)
 
 	if list_ips:

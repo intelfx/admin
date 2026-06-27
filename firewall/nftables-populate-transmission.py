@@ -534,6 +534,15 @@ def main(
 		sys.exit(0)
 
 	if nft:
+		# Filter garbage IPs from the sets at this point
+		# (we want all elements in the debug output, but not in the actual nftables).
+		elements = {
+			ep
+			for ep in elements
+			if ep.addr.is_global
+		}
+		log.info("elements.valid", count=len(elements))
+
 		log.info("writing nftables sets")
 		# XXX: workaround for nftables bug / unwanted behavior
 		# See Element.render_nft() for details.

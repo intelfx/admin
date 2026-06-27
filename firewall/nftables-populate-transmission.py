@@ -99,32 +99,6 @@ class Element:
 
 	def render_nft(self, timeout: Optional[str]) -> str:
 		"""Render this endpoint as an nftables set element (proto . port . addr)."""
-		# XXX: workaround for nftables bug / unwanted behavior
-		#
-		# When an element is added into a set over an existing element, e.g.:
-		#
-		# set transmission_ip4 {
-		# 	type inet_proto . inet_service . ipv4_addr
-		# 	flags timeout
-		# 	elements = { tcp . 2710 . 5.45.76.168 timeout 5m expires 4m58s75ms }
-		# }
-		# $ nft add element inet nft transmission_ip4 { tcp . 2710 . 5.45.76.168 timeout 5m }
-		#
-		# Then the add is completely elided and the timeout of the existing entry
-		# is not reset, *unless* the new timeout is different from the timeout
-		# in the existing entry.
-		#
-		# Unfortunately, if we issue two adds inline in the same statement
-		# (one with a garbage timeout, followed by one with the desired timeout),
-		# the second add will *sometimes* be elided, resulting in the garbage timeout
-		# ending up in the final set. Thus, we stagger adds into two separate
-		# nft statements (one with all garbage timeouts, second with desired timeouts).
-		# See main() for that.
-
-		# return ",\n\t".join([
-		# 	self._render_nft("999h"),
-		# 	self._render_nft(timeout),
-		#  ])
 		_timeout = f" timeout {timeout}" if timeout is not None else ""
 		return f"{self.proto} . {self.port} . {self.addr}{_timeout}"
 
@@ -545,23 +519,33 @@ def main(
 		log.info("elements.valid", count=len(elements))
 
 		log.info("writing nftables sets")
-		# XXX: workaround for nftables bug / unwanted behavior
-		# See Element.render_nft() for details.
-		# Produce two distinct nft scripts, one using a garbage timeout and one
-		# with the desired timeout, then apply both in sequence.
-		script_workaround = nft_emit(
-			elements, nft_table, {4: nft_set_v4, 6: nft_set_v6}, nft_timeout="999h"
-		)
-		script = nft_emit(
-			elements, nft_table, {4: nft_set_v4, 6: nft_set_v6}, nft_timeout
-		)
+		# XXX: compensate for nftables behavior
+		#
+		# When an element is added into a set over an existing element, e.g.:
+		#
+		# set transmission_ip4 {
+		# 	type inet_proto . inet_service . ipv4_addr
+		# 	flags timeout
+		# 	elements = { tcp . 2710 . 5.45.76.168 timeout 5m expires 4m58s75ms }
+		# }
+		# $ nft add element inet nft transmission_ip4 { tcp . 2710 . 5.45.76.168 timeout 5m }
+		#
+		# Then the add is completely elided and the timeout of the existing entry
+		# is not reset, *unless* the new timeout is different from the timeout
+		# in the existing entry.
+		#
+		# Emit destroy+add pairs to reset expiry times of all affected elements.
+		nft_sets: dict[Literal[4, 6], str] = {4: nft_set_v4, 6: nft_set_v6}
+		script = "".join([
+			nft_emit(elements, nft_table, nft_sets, nft_timeout=None, verb="destroy"),
+			nft_emit(elements, nft_table, nft_sets, nft_timeout, verb="add"),
+		])
 
 		if not script:
 			log.warning("nft.empty")
 		elif dry_run:
 			sys.stdout.write(script)
 		else:
-			subprocess.run(["nft", "-f", "-"], input=script_workaround.encode(), check=True)
 			subprocess.run(["nft", "-f", "-"], input=script.encode(), check=True)
 			log.info("nft.applied")
 

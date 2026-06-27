@@ -9,4 +9,4 @@ After=transmission@hdd.service
 Type=oneshot
 ExecStart=-/etc/admin/scripts/firewall/nftables-populate-transmission.py --url http://localhost:9091/transmission/rpc $NFT_IPSET_ARGS
 ExecStart=-/etc/admin/scripts/firewall/nftables-populate-transmission.py --url http://localhost:9092/transmission/rpc $NFT_IPSET_ARGS
-Environment="NFT_IPSET_ARGS=--write --nft --nft-timeout 1h --nft-table 'inet nft' --nft-set-v4 transmission_ip4 --nft-set-v6 transmission_ip6"
+Environment="NFT_IPSET_ARGS=--write --nft --nft-table 'inet nft' --nft-set-v4 transmission_ip4 --nft-set-v6 transmission_ip6"

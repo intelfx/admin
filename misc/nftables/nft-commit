@@ -1,17 +1,16 @@
 #!/bin/bash -e
 
-
-if [[ "$(systemctl is-active nftables-restore.timer)" == inactive ]]; then
-	systemctl --no-pager status -n0 nftables-restore.timer ||:
-	echo >&2 "W: no changes to nftables.conf!"
-	exit 0
-fi
-
 if [[ "$(systemctl is-failed nftables-reload.service)" == failed ]]; then
 	set +e
 	systemctl --no-pager status -n0 nftables-reload.service
 	journalctl --no-pager --no-hostname -u nftables-reload.service -L
 	exit 1
+fi
+
+if [[ "$(systemctl is-active nftables-restore.timer)" == inactive ]]; then
+	systemctl --no-pager status -n0 nftables-restore.timer ||:
+	echo >&2 "W: no changes to nftables.conf!"
+	exit 0
 fi
 
 rm -f /etc/nftables-good.conf

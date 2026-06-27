@@ -425,14 +425,12 @@ def main(
 	if list_urls:
 		# announces is a set, nothing to count
 		lines_emit(sys.stdout, announces, counted=False)
-		sys.exit(0)
 
 	if list_trackers:
 		trackers = gather_trackers(announces)
 		log.info("trackers.result", count=len(trackers))
 		# trackers is a set, nothing to count
 		lines_emit(sys.stdout, trackers, counted=False)
-		sys.exit(0)
 
 	log.info("parsing tracker endpoints")
 	endpoints = gather_endpoints(announces)
@@ -447,25 +445,21 @@ def main(
 			cls=JSONEncoder,
 			indent=4,
 		)
-		sys.exit(0)
 
 	if list_hosts:
 		hosts = [ ep.host for ep in endpoints ]
 		log.info("hosts.result", count=len(hosts))
 		lines_emit(sys.stdout, hosts)
-		sys.exit(0)
 
 	if list_ports:
 		ports = [ ep.port for ep in endpoints ]
 		log.info("ports.result", count=len(ports))
 		lines_emit(sys.stdout, ports)
-		sys.exit(0)
 
 	if list_services:
 		services = [ f"{ep.proto} . {ep.port}" for ep in endpoints ]
 		log.info("services.result", count=len(services))
 		lines_emit(sys.stdout, services)
-		sys.exit(0)
 
 	log.info("resolving tracker endpoint 3-tuples")
 	# elements = resolve_endpoints(endpoints)
@@ -481,7 +475,6 @@ def main(
 			cls=JSONEncoder,
 			indent=4,
 		)
-		sys.exit(0)
 
 	if dump_all:
 		json.dump(
@@ -494,19 +487,16 @@ def main(
 			cls=JSONEncoder,
 			indent=4,
 		)
-		sys.exit(0)
 
 	if list_elements:
 		tuples = [ ep.render_nft(timeout=None) for ep in elements ]
 		# endpoints are a set, elements will be unique ⇒ nothing to count
 		lines_emit(sys.stdout, tuples, counted=False)
-		sys.exit(0)
 
 	if list_ips:
 		ips = [ ep.addr for ep in elements ]
 		log.info("ips.result", count=len(ips))
 		lines_emit(sys.stdout, ips)
-		sys.exit(0)
 
 	if nft:
 		# Filter garbage IPs from the sets at this point
@@ -548,10 +538,6 @@ def main(
 		else:
 			subprocess.run(["nft", "-f", "-"], input=script.encode(), check=True)
 			log.info("nft.applied")
-
-		sys.exit(0)
-
-	raise SystemExit("no output generated")
 
 
 if __name__ == "__main__":

@@ -96,9 +96,37 @@ class Element:
 	port: int
 	addr: IPAddress
 
-	def render_nft(self, timeout: str) -> str:
+	def _render_nft(self, timeout: str) -> str:
 		"""Render this endpoint as an nftables set element (proto . port . addr)."""
 		return f"{self.proto} . {self.port} . {self.addr} timeout {timeout}"
+
+	def render_nft(self, timeout: str) -> str:
+		"""
+		Produce nftables statements to insert or update this endpoint as nftables
+		set element (proto . port . addr) into a set with timeouts.
+		"""
+		# XXX: workaround for nftables bug / unwanted behavior
+		#
+		# When an element is added into a set over an existing element, e.g.:
+		#
+		# set transmission_ip4 {
+		# 	type inet_proto . inet_service . ipv4_addr
+		# 	flags timeout
+		# 	elements = { tcp . 2710 . 5.45.76.168 timeout 5m expires 4m58s75ms }
+		# }
+		# $ nft add element inet nft transmission_ip4 { tcp . 2710 . 5.45.76.168 timeout 5m }
+		#
+		# Then the add is completely elided and the timeout of the existing entry
+		# is not reset, *unless* the new timeout is different from the timeout
+		# in the existing entry.
+		#
+		# Thankfully, we can issue two adds inline in the same statement
+		# (one with a garbage timeout, followed by one with the desired timeout)
+		# and it will behave as we want, aside from some inefficiency.
+		return ",\n\t".join([
+			self._render_nft("1s"),
+			self._render_nft(timeout),
+		 ])
 
 # --- very stupid serialization ------------------------------------------------
 

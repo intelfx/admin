@@ -20,6 +20,8 @@ Defaults env_keep += "MINIKUBE_IN_STYLE"
 Defaults env_keep += "BAT_THEME"
 Defaults env_keep += "ORIG_TERM"
 Defaults env_keep += "DOCKER_HOST CONTAINER_HOST"
+Defaults env_keep += "GHOSTTY_*"
+Defaults env_keep += "DEBUGINFOD_URLS"
 
 Defaults !secure_path
 Defaults>root !use_pty

@@ -97,16 +97,8 @@ class Element:
 	port: int
 	addr: IPAddress
 
-	def _render_nft(self, timeout: Optional[str]) -> str:
-		"""Render this endpoint as an nftables set element (proto . port . addr)."""
-		_timeout = f" timeout {timeout}" if timeout is not None else ""
-		return f"{self.proto} . {self.port} . {self.addr}{_timeout}"
-
 	def render_nft(self, timeout: Optional[str]) -> str:
-		"""
-		Produce nftables statements to insert or update this endpoint as nftables
-		set element (proto . port . addr) into a set with timeouts.
-		"""
+		"""Render this endpoint as an nftables set element (proto . port . addr)."""
 		# XXX: workaround for nftables bug / unwanted behavior
 		#
 		# When an element is added into a set over an existing element, e.g.:
@@ -122,13 +114,19 @@ class Element:
 		# is not reset, *unless* the new timeout is different from the timeout
 		# in the existing entry.
 		#
-		# Thankfully, we can issue two adds inline in the same statement
-		# (one with a garbage timeout, followed by one with the desired timeout)
-		# and it will behave as we want, aside from some inefficiency.
-		return ",\n\t".join([
-			self._render_nft("1s"),
-			self._render_nft(timeout),
-		 ])
+		# Unfortunately, if we issue two adds inline in the same statement
+		# (one with a garbage timeout, followed by one with the desired timeout),
+		# the second add will *sometimes* be elided, resulting in the garbage timeout
+		# ending up in the final set. Thus, we stagger adds into two separate
+		# nft statements (one with all garbage timeouts, second with desired timeouts).
+		# See main() for that.
+
+		# return ",\n\t".join([
+		# 	self._render_nft("999h"),
+		# 	self._render_nft(timeout),
+		#  ])
+		_timeout = f" timeout {timeout}" if timeout is not None else ""
+		return f"{self.proto} . {self.port} . {self.addr}{_timeout}"
 
 # --- very stupid serialization ------------------------------------------------
 
@@ -524,7 +522,7 @@ def main(
 		sys.exit(0)
 
 	if list_elements:
-		tuples = [ ep._render_nft(timeout=None) for ep in elements ]
+		tuples = [ ep.render_nft(timeout=None) for ep in elements ]
 		# endpoints are a set, elements will be unique ⇒ nothing to count
 		lines_emit(sys.stdout, tuples, counted=False)
 		sys.exit(0)
@@ -537,6 +535,13 @@ def main(
 
 	if nft:
 		log.info("writing nftables sets")
+		# XXX: workaround for nftables bug / unwanted behavior
+		# See Element.render_nft() for details.
+		# Produce two distinct nft scripts, one using a garbage timeout and one
+		# with the desired timeout, then apply both in sequence.
+		script_workaround = nft_emit(
+			elements, nft_table, {4: nft_set_v4, 6: nft_set_v6}, nft_timeout="999h"
+		)
 		script = nft_emit(
 			elements, nft_table, {4: nft_set_v4, 6: nft_set_v6}, nft_timeout
 		)
@@ -546,6 +551,7 @@ def main(
 		elif dry_run:
 			sys.stdout.write(script)
 		else:
+			subprocess.run(["nft", "-f", "-"], input=script_workaround.encode(), check=True)
 			subprocess.run(["nft", "-f", "-"], input=script.encode(), check=True)
 			log.info("nft.applied")
 

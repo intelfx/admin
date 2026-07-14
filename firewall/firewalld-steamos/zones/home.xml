@@ -36,5 +36,6 @@
   <service name="-my-general"/>
   <service name="-my-p2p"/>
   <interface name="enp4s0f3u1u4c2"/>
+  <interface name="enp5s0"/>
   <forward/>
 </zone>

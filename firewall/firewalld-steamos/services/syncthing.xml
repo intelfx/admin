@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<service>
+  <short>Syncthing</short>
+  <description>Syncthing is a peer-to-peer file synchronization service. Enable this option, if you plan to run the Syncthing service.</description>
+  <port port="22000" protocol="tcp"/>
+  <port port="22000" protocol="udp"/>
+  <port port="21027" protocol="udp"/>
+  <port port="28384" protocol="tcp"/>
+  <port port="28384" protocol="udp"/>
+</service>

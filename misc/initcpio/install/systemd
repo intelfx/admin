@@ -17,7 +17,7 @@ add_systemd_unit() {
     add_file "$unit"
 
     # add drop-ins
-    for dep in {/etc,/usr/lib}/systemd/system/"${unit##*/}.d"/*.conf; do
+    for dep in /{etc,usr/lib}/systemd/system/"${unit##*/}".d/*.conf; do
         if [[ -e $dep ]]; then
             add_file "$dep"
         fi
@@ -29,7 +29,7 @@ add_systemd_unit() {
         read -ra values <<< "$values"
 
         case $key in
-            Requires|OnFailure)
+            Requires|OnFailure|OnSuccess)
                 # only add hard dependencies (not Wants)
                 map add_systemd_unit "${values[@]}"
                 ;;
@@ -45,25 +45,25 @@ add_systemd_unit() {
         esac
 
     # maybe: shopt -s nullglob;
-    #        cat "$unit" {/etc,/usr/lib}/systemd/system/"${unit##*/}.d"/*.conf
+    #        cat "$unit" /{etc,usr/lib}/systemd/system/"${unit##*/}".d/*.conf
     done < <(systemd-analyze cat-config "$unit")
 
     # preserve reverse dependency links
-    for dep in {/etc,/usr/lib}/systemd/system/*.{wants,requires}/"${unit##*/}"; do
+    for dep in /{etc,usr/lib}/systemd/system/*.{wants,requires}/"${unit##*/}"; do
         if [[ -L $dep ]]; then
             add_symlink "$dep"
         fi
     done
 
     # add hard dependencies specified via files
-    for dep in {/etc,/usr/lib}/systemd/system/"$unit".requires/*; do
+    for dep in /{etc,usr/lib}/systemd/system/"$unit".requires/*; do
         if [[ -f "$dep" ]]; then
             add_systemd_unit "${dep##*/}"
         fi
     done
 
     # add hard dependency links
-    for dep in {/etc,/usr/lib}/systemd/system/"$unit".requires/*; do
+    for dep in /{etc,usr/lib}/systemd/system/"$unit".requires/*; do
         if [[ -L $dep ]]; then
             add_symlink "$dep"
         fi
@@ -82,11 +82,17 @@ build() {
     map add_module 'crypto-lzo' 'crypto-lz4'
 
     add_binary /usr/bin/kmod /usr/bin/modprobe
-    add_binary /usr/bin/mount
-    add_binary /usr/bin/sulogin
-    add_binary /usr/bin/umount
-    add_binary /usr/lib/systemd/systemd /init
+    add_binary /usr/lib/systemd/systemd
+    add_symlink /init usr/lib/systemd/systemd
 
+    # Generic utility binaries
+    map add_binary /usr/bin/mount \
+        /usr/bin/sulogin \
+        /usr/bin/umount \
+        /usr/bin/swapon \
+        /usr/bin/swapoff
+
+    # Systemd specific binaries
     map add_binary \
         /usr/bin/journalctl \
         /usr/bin/systemd-tmpfiles \
@@ -94,10 +100,17 @@ build() {
         /usr/lib/systemd/systemd-hibernate-resume \
         /usr/lib/systemd/systemd-shutdown \
         /usr/lib/systemd/systemd-sulogin-shell \
+        /usr/lib/systemd/systemd-tpm2-setup \
+        /usr/lib/systemd/systemd-validatefs \
         /usr/lib/systemd/system-generators/systemd-fstab-generator \
         /usr/lib/systemd/system-generators/systemd-gpt-auto-generator \
         /usr/lib/systemd/system-generators/systemd-hibernate-resume-generator \
         /usr/lib/systemd/system-generators/systemd-debug-generator
+
+    add_symlink /usr/bin/halt systemctl
+    add_symlink /usr/bin/reboot systemctl
+    add_symlink /usr/bin/poweroff systemctl
+    add_symlink /usr/bin/shutdown systemctl
 
     # udev rules
     map add_udev_rule "$rules" \
@@ -123,7 +136,10 @@ build() {
         local-fs.target \
         local-fs-pre.target \
         paths.target \
+        halt.target \
         reboot.target \
+        poweroff.target \
+        shutdown.target \
         slices.target \
         sockets.target \
         swap.target \
@@ -135,13 +151,19 @@ build() {
         systemd-journald-dev-log.socket \
         systemd-journald.service \
         systemd-modules-load.service \
+        systemd-pcrextend.socket \
+        systemd-pcrextend@.service \
+        systemd-pcrnvdone.service \
+        systemd-pcrosseparator.service \
         systemd-pcrphase-initrd.service \
         systemd-tmpfiles-setup.service \
         systemd-tmpfiles-setup-dev.service \
+        systemd-tpm2-setup-early.service \
         systemd-udevd-control.socket \
         systemd-udevd-kernel.socket \
         systemd-udevd.service \
         systemd-udev-trigger.service \
+        systemd-validatefs@.service \
         timers.target \
         rescue.target \
         emergency.target \
@@ -154,7 +176,15 @@ build() {
     #  tss2-*   -> tpm2-util
     #  kmod     -> systemd-shared
     #  qrencode -> bsod
-    for LIB in kmod tss2-{esys,rc,mu,tcti-'*'} qrencode; do
+    #  seccomp  -> systemd
+    #  acl      -> systemd-tmpfiles
+    #  Things that should be gone with the new .dlopen note section
+    #  acl     -> libsystemd-shared
+    #  blkid   -> libsystemd-shared
+    #  mount   -> libsystemd-shared
+    #  audit   -> libsystemd-shared
+    #  pam     -> libsystemd-shared
+    for LIB in kmod tss2-{esys,rc,mu,tcti-'*'} qrencode seccomp acl blkid mount audit pam; do
         LC_ALL=C.UTF-8 find /usr/lib/ -maxdepth 1 -name "lib${LIB}.so*" | while read -r FILE; do
             if [[ -L "${FILE}" ]]; then
                 add_symlink "${FILE}"
@@ -188,8 +218,21 @@ build() {
 
     [[ -f /etc/fstab.initramfs ]] && add_file "/etc/fstab.initramfs" "/etc/fstab"
 
-    # Add default systemd tmpfile
+    # Add default systemd tmpfiles, and tmpfile to copy stuff from .extra to /run/systemd
     add_file "/usr/lib/tmpfiles.d/systemd.conf"
+    add_file "/usr/lib/tmpfiles.d/20-systemd-stub.conf"
+
+    # add hwdb binaries to the initramfs
+    for f in /usr/lib/udev/hwdb.bin /etc/udev/hwdb.bin; do
+        if [[  -f "$f" ]]; then
+            add_file "$f"
+        fi
+    done
+
+    # Include nvpcr files
+    for nvpcr in /usr/lib/nvpcr/*.nvpcr; do
+        add_file "$nvpcr"
+    done
 }
 
 help() {
